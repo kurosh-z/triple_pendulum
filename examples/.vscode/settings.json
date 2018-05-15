@@ -1,4 +1,4 @@
 {
     "python.formatting.provider": "yapf",
-    "python.pythonPath": "C:\\Users\\kuros\\Anaconda3\\python.exe"
+    "python.pythonPath": "/usr/bin/python"
 }
