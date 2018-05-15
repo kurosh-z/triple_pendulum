@@ -103,6 +103,7 @@ for i in range(n):
     rigid_bodies.append(LBodyi)
 
     kindiffs.append(q[i + 1].diff(t) - qdot[i + 1])
+    
     """
     #potentials for Lagrangian
     h = mass_centers[i + 1].pos_from(O).dot(
