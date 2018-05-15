@@ -39,26 +39,17 @@ O.set_vel(In_frame, 0)
 C0 = me.Point('C0')
 C0.set_pos(O, q[0] * In_frame.x)
 C0.set_vel(In_frame, qdot[0] * In_frame.x)
+
 #cart frame
 cart_frame = In_frame.orientnew('L0', 'Axis', [q[0], In_frame.x])
 cart_frame.set_ang_vel(In_frame, 0)
-'''
-cart_inertia_dyadic = me.inertia(cart_frame, 0, 0, J[0])
-cart_central_inertia = (cart_inertia_dyadic, C0)
 
-cart = me.RigidBody('Cart', C0, cart_frame, m[0], cart_central_inertia)
-'''
 #endulum frame
 pen_frame = In_frame.orientnew('L1', 'Axis', [q[1], In_frame.z])
 pen_frame.set_ang_vel(In_frame, qdot[1] * In_frame.z)
 #mass center of pendulum
 s = C0.locatenew('a', a * pen_frame.x)
 s.v2pt_theory(C0, In_frame, pen_frame)
-'''
-pen_inertia_dyadic = me.inertia(pen_frame, 0, 0, J[1])
-pen_central_inertia = (pen_inertia_dyadic, a)
-pen = me.RigidBody('Pen', a, pen_frame, m[1], pen_central_inertia)
-'''
 
 # finding velocities in inertial reference frame --> use them to find kinetic energy
 v0 = C0.vel(In_frame)
@@ -77,5 +68,23 @@ st.make_global(params)
 
 mod = mt.generate_symbolic_model(T, V, q, [f, tau])
 mod.eqns.simplify()
-solutions = solve(mod.eqns, q[0], q[1], qdot[0], qdot[1])
-print(solutions)
+
+xx = mod.xx
+fx = mod.f
+G = mod.g
+
+equilib_point = sm.Matrix([0, sm.pi / 3, 0, 0])
+parameter_values = [(g, 9.81), (a, 0.2), (d, 0.00715), (m[0], 3.34),
+                    (m[1], 0.8512), (J[0], 0), (J[1], 0.01980)]
+#replm = list(map(lambda a,b :(a,b),xx, equilib_point)) + parameter_values
+replm = parameter_values
+
+tt = np.arange(0, 10, 1e-3)
+xx0 = st.to_np(equilib_point).ravel()
+
+simulation = st.SimulationModel(
+    mod.f, mod.g, mod.xx, model_parameters=parameter_values)
+
+rhs1 = simulation.create_simfunction()
+
+sol = odeint(rhs1, xx0, tt)
