@@ -1,11 +1,10 @@
-
-C:\robotics\triple_pendulum\.vscode\
-C:\robotics\triple_pendulum\.ipynb_checkpoints\
-C:\robotics\triple_pendulum\examples\.ipynb_checkpoints\
-C:\robotics\triple_pendulum\examples\.vscode\
-C:\robotics\triple_pendulum\examples\__pycache__\
-C:\robotics\triple_pendulum\debug\.ipynb_checkpoints\
-C:\robotics\triple_pendulum\optimization\.vscode\
+\.vscode\
+\.ipynb_checkpoints\
+\examples\.ipynb_checkpoints\
+\examples\.vscode\
+\examples\__pycache__\
+\debug\.ipynb_checkpoints
+\optimization\.vscode\
 
 
 
