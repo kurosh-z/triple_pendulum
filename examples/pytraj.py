@@ -51,6 +51,7 @@ pen_frame.set_ang_vel(In_frame, qdot[1] * In_frame.z)
 s = C0.locatenew('a', a * pen_frame.x)
 s.v2pt_theory(C0, In_frame, pen_frame)
 
+
 # finding velocities in inertial reference frame --> use them to find kinetic energy
 v0 = C0.vel(In_frame)
 v1 = s.vel(In_frame)
@@ -70,44 +71,33 @@ mod = mt.generate_symbolic_model(T, V, q, [f, tau])
 mod.eqns.simplify()
 
 mod.calc_state_eq(simplify=True)
-xx = mod.xx
-fx = mod.f
-G = mod.g
+xx=mod.xx
+fx=mod.f
+G=mod.g
 
-equilib_point = sm.Matrix([0, sm.pi / 3, 0, 0])
-parameter_values = [(g, 9.81), (a, 0.2), (d, 0.0), (m[0], 3.34),
-                    (m[1], 0.8512), (J[0], 0), (J[1], 0.01980)]
+equilib_point=sm.Matrix([0, sm.pi/3, 0, 0])
+parameter_values = [(g, 9.81), (a, 0.2), (d, 0.0), (m[0], 3.34), (m[1], 0.8512), (J[0], 0), (J[1], 0.01980)]
 #replm = list(map(lambda a,b :(a,b),xx, equilib_point)) + parameter_values
 replm = parameter_values
-frames_per_sec = 60
-final_time = 5
-tt = np.linspace(0.0, final_time, final_time * frames_per_sec)
-xx0 = st.to_np(equilib_point).ravel()
+frames_per_sec= 60
+final_time= 5
+tt=np.linspace(0.0, final_time, final_time*frames_per_sec)
+xx0= st.to_np(equilib_point).ravel()
 
-sim = st.SimulationModel(
-    mod.f, mod.g, mod.xx, model_parameters=parameter_values)
-
-parameter_dict = dict(parameter_values)
-fx = fx.subs(parameter_dict)
-gx = G.subs(parameter_dict)
-
-f_func = st.expr_to_func(xx, fx, np_wrapper=True)
-g_func = st.expr_to_func(xx, gx, np_wrapper=True)
+simulation=st.SimulationModel(mod.f, mod.g , mod.xx, model_parameters=parameter_values)
 
 
-def rhs(x, u):
-    xx = np.ravel(x)
-    fx = np.ravel(f_func(*xx))
-    gx = g_func(*xx)
-    u1, = u
-    xx_dot = fx + np.dot(gx, np.array([0, 0, u1, 0]))
+def rhs(x,u, simulation):
+    def controller_func(x, u):
+        return u
+    rhs=simulation.create_simfunction(controller_function=controller_func)
+    return rhs(x, 0)
 
-    return xx_dot
+xa=[0.0, np.pi/2*(-1),0.0, 0.0 ]
+xb=[0.0, np.pi/2, 0.0, 0.0]
+ua=[0, 0]
+ub=[0, 0]
+control_sys=pytr.ControlSystem(rhs,a=0, b=2.0, xa=xa, xb=xb, ua=ua, ub=ub )
+x, u=control_sys.solve()
 
 
-xa = [0.0, np.pi / 2 * (-1), 0.0, 0.0]
-xb = [0.0, np.pi / 2, 0.0, 0.0]
-ua = [0.0]
-ub = [0.0]
-control_sys = pytr.ControlSystem(rhs, a=0, b=2.0, xa=xa, xb=xb, ua=ua, ub=ub)
-x, u = control_sys.solve()
