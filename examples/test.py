@@ -1,3 +1,7 @@
+# coding: utf-8
+
+# In[2]:
+
 from __future__ import division, print_function
 import sympy as sm
 from sympy import trigsimp
@@ -94,6 +98,8 @@ gx = G.subs(parameter_dict)
 f_func = st.expr_to_func(xx, fx, np_wrapper=True)
 g_func = st.expr_to_func(xx, gx, np_wrapper=True)
 
+# In[3]:
+
 
 def rhs(x, u):
     xx = np.ravel(x)
@@ -105,9 +111,56 @@ def rhs(x, u):
     return xx_dot
 
 
-xa = [0.0, 0.0, 0.0, 0.0]
+# In[4]:
+
+x01 = [0, 0, np.pi / 2, 0]
+np.ravel(f_func(*x01))
+
+# In[5]:
+
+rhs(x01, [1])
+
+# In[6]:
+
+u = sm.symbols('u')
+
+qdd_exp = fx + sm.Matrix([0, 0, gx[2] * u, gx[3] * u])
+
+q0dd_fnc = sm.lambdify([q[0], q[1], qdot[0], qdot[1], u], qdd_exp[0], 'sympy')
+q1dd_fnc = sm.lambdify([q[0], q[1], qdot[0], qdot[1], u], qdd_exp[1], 'sympy')
+q2dd_fnc = sm.lambdify([q[0], q[1], qdot[0], qdot[1], u], qdd_exp[2], 'sympy')
+q3dd_fnc = sm.lambdify([q[0], q[1], qdot[0], qdot[1], u], qdd_exp[3], 'sympy')
+
+# In[7]:
+
+#help(sm.lambdify)
+
+# In[8]:
+
+q2dd_fnc(1, 1, 0, 1, 1)
+
+# In[9]:
+
+
+def rhs_new(x, u):
+    q0, q1, q2, q3 = x
+    u0, = u
+    xd1 = q2
+    xd2 = q3
+    xd3 = q2dd_fnc(q0, q1, q2, q3, u0)
+    xd4 = q3dd_fnc(q0, q1, q2, q3, u0)
+    ret = np.array([xd1, xd2, xd3, xd4])
+    return ret
+
+
+# In[10]:
+
+# In[ ]:
+
+xa = [0.0, np.pi / 2 * (-1), 0.0, 0.0]
 xb = [0.0, np.pi / 2, 0.0, 0.0]
 ua = [0.0]
 ub = [0.0]
-control_sys = pytr.ControlSystem(rhs, a=0, b=2.0, xa=xa, xb=xb, ua=ua, ub=ub)
-x, u = control_sys.solve()
+control_sys = pytr.ControlSystem(
+    rhs_new, a=0, b=2.0, xa=xa, xb=xb, ua=ua, ub=ub)
+xsol, usol = control_sys.solve()
