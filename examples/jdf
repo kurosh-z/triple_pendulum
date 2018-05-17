@@ -1,0 +1,19 @@
+Help on package ipydex:
+
+NNAAMMEE
+    ipydex
+
+FFIILLEE
+    /home/kurosh/.local/lib/python2.7/site-packages/ipydex/__init__.py
+
+PPAACCKKAAGGEE  CCOONNTTEENNTTSS
+    core
+    displaytools
+    release
+
+DDAATTAA
+    ____vveerrssiioonn____ = '0.5.2'
+
+VVEERRSSIIOONN
+    0.5.2
+
