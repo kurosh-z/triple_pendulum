@@ -8,8 +8,6 @@
 -----------
 To Do :
   - resolve the issues with imports 
-  - praramer should be read form a file (or maybe using config.py 
-    would be more appropriate hier ?!)
   
 '''
 #=============================================================
@@ -55,7 +53,8 @@ import config
 
 #ipydex.activate_ips_on_exception()
 
-
+# finding fx and gx wiht qdd0 as input 
+fx, gx= generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u)
 
 
 # defining system parameters

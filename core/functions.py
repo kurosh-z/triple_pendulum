@@ -31,7 +31,7 @@ from sympy.solvers import solve
 import sympy.physics.mechanics as me
 import numpy as np
 import mpmath as mp
-import scipy as sc 
+from scipy import linalg 
 
 import config
 #=============================================================
@@ -132,13 +132,13 @@ def lqr(A, B, Q, R, additional_outputs=False):
 
     """
     #solving the algebric riccati equation
-    P = sc.linalg.solve_continuous_are(A, B, Q, R)
+    P = linalg.solve_continuous_are(A, B, Q, R)
     
     #compute LQR gain
-    K = sc.linalg.inv(R) * (B.T.dot(P))
+    K = linalg.inv(R) * (B.T.dot(P))
     
     if additional_outputs :
-        eigVals, eigVec = sc.linalg.eig(A - B * K)
+        eigVals, eigVec = linalg.eig(A - B * K)
         ret= K, P, eigVals, eigVec
     else :
         ret =K

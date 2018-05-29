@@ -144,3 +144,6 @@ mass_matrix = sm.trigsimp(Kane.mass_matrix_full)
 forcing_vector = sm.trigsimp(Kane.forcing_full)
 
 #xdot_expr=(mass_matrix.inv()*forcing_vector)
+
+# finding fx and gx wiht qdd0 as input 
+fx, gx= generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u)
