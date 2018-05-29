@@ -4,7 +4,11 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 03f06c3a3f6cb556fe91609cf7c995ae6e1e74ec
         {
             "name": "cmd/external",
             "type": "python",
@@ -12,7 +16,9 @@
             "program": "${file}",
             "console": "externalTerminal"
         },
+
         {
+<<<<<<< HEAD
             "name": "cmd/integrated",
             "type": "python",
             "request": "launch",
@@ -21,11 +27,15 @@
         },
         {
             "name": "Python Experimental: Current File (Integrated Terminal)",
+=======
+            "name": "Python Experimental: Current File (bash)",
+>>>>>>> 03f06c3a3f6cb556fe91609cf7c995ae6e1e74ec
             "type": "pythonExperimental",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
         },
+
         {
             "name": "Python Experimental: Attach",
             "type": "pythonExperimental",
