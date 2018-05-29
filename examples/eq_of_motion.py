@@ -144,3 +144,4 @@ for i in Lagrangians :
 Lag_mehtod=me.LagrangesMethod(Lagrangian, q, forces, rigid_bodies)    
 """
 print(forcing_vector)    
+

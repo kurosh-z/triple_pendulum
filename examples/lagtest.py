@@ -22,6 +22,7 @@ qdot = st.time_deriv(q, q)
 qdd = st.time_deriv(qdot, qdot)
 st.make_global(q, qdot)
 
+
 f = sm.symbols('f')
 m = sm.symbols('m:2')
 J = sm.symbols('J:2')
@@ -44,7 +45,7 @@ C0.set_vel(In_frame, qdot[0] * In_frame.x)
 cart_frame = In_frame.orientnew('L0', 'Axis', [q[0], In_frame.x])
 cart_frame.set_ang_vel(In_frame, 0)
 
-#endulum frame
+#Pendulum frame
 pen_frame = In_frame.orientnew('L1', 'Axis', [q[1], In_frame.z])
 pen_frame.set_ang_vel(In_frame, qdot[1] * In_frame.z)
 #mass center of pendulum
