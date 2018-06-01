@@ -11,7 +11,7 @@ To Do :
 #=============================================================
 import os, sys
 import dill
-import logging
+# import logging
 
 #=============================================================
 # External Python modules
@@ -40,10 +40,10 @@ from traj_opt import *
 # Lqr control for top equilibrium point
 #=============================================================
 
-logging.basicConfig(
-    filename='pen_odeint.log',
-    level=logging.CRITICAL ,
-    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+# logging.basicConfig(
+#     filename='pen_odeint.log',
+#     level=logging.CRITICAL ,
+#     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
 # logger = logging.getLogger()
 # handler = logging.StreamHandler()
@@ -124,17 +124,16 @@ Pe0 = np.identity(4)
 Pe0 = Pe0.reshape(16)
 # logger.debug('Pe = y0 : %f', Pe0)
 # print ('Pe = y0 :', Pe0)
-'''
-P = odeint(riccati_diff_equ, Pe, t[::-1], args=(A_eq, B_eq, Q, R, dynamic_symbs))
 
+P = odeint(riccati_diff_equ, Pe, t[::-1], args=(A_eq, B_eq, Q, R, dynamic_symbs))
+'''
 with open('P_matrix.pkl','wb' ) as file :
     dill.dump(P, file)
 
 '''    
 with open('P_matrix.pkl', 'rb') as file :
     P=dill.load(file)
-
-# finding gain k for lqr Tracking :
+# finding gain k for Tracking :
 
 Psim=P[::-1]
 K_matrix= generate_gain_matrix(R, B_eq, Psim, t, dynamic_symbs)
@@ -145,15 +144,15 @@ xdot_func= sympy_states_to_func(dynamic_symbs, param_list)
 ipydex.IPS()
 
 
-def ode_function(x, t, xdot_func, K_matrix, Vect,  mode='Open_loop'):
+def ode_function(x, t, xdot_func, K_matrix, Vect,  mode='Closed_loop'):
     '''
     it's the dx/dt=func(x, t, args)  to be used in odeint
     (the first two arguments are system state x and time t)
 
     there are two modes available:
-     - Open_loop is defualt and use for tracking (Folgerung)
-     - Closed_loop could be activated in mode and could be 
-       used as regulator (Regler)
+     - Closed_loop is defualt and use for tracking
+     - Open_loop could be activated in mode and could be 
+       used as regulator
 
     ATTENTION :
       - use sympy_states_to_func to produce xdot functions out of 
@@ -162,15 +161,17 @@ def ode_function(x, t, xdot_func, K_matrix, Vect,  mode='Open_loop'):
         so you could pass it as xdot_func )
 
     '''
-    
+    if t>2 :
+        t=2
+        
     logging.debug('x_new: %s \n \n', x)
     logging.debug('Debugging Message from ode_function')    
     logging.debug('----------------------------------------------------------------')
-    n=len(Vect)
+    # n=len(Vect)
     xs=config.cs_ret[0](t)
     us=config.cs_ret[1](t)
     
-    if mode == 'Open_loop' :
+    if mode == 'Closed_loop' :
         k0 = np.interp(t, Vect, K_matrix[:, 0])
         k1 = np.interp(t, Vect, K_matrix[:, 1])
         k2 = np.interp(t, Vect, K_matrix[:, 2])
@@ -184,7 +185,7 @@ def ode_function(x, t, xdot_func, K_matrix, Vect,  mode='Open_loop'):
         logging.debug('k :%s', k)
         logging.debug('delta_x: %s',delta_x)
         logging.debug('delta_u: %s \n', delta_u)
-    elif mode == 'Closed_loop' :
+    elif mode == 'Open_loop' :
         inputs= us
 
     state= x
@@ -203,8 +204,8 @@ def ode_function(x, t, xdot_func, K_matrix, Vect,  mode='Open_loop'):
     return xdot
 
 
-x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t) )
-# x_closed_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Closed_loop') )
+x_closed_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t) )
+# x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
 ipydex.IPS()
 
 '''

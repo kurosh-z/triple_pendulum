@@ -330,7 +330,7 @@ def generate_gain_matrix(R, B_equi, P, Vect, dynamic_symbs):
         B = np.array(B.tolist()).astype(np.float64)
 
         # finding k and add it to K_matrix
-        K_matrix[i, :] = -np_inv(R) * B.T.dot(P_eq)
+        K_matrix[i, :] = np_inv(R) * B.T.dot(P_eq)
 
     return K_matrix
 
