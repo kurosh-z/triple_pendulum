@@ -8,7 +8,7 @@ cs_ret = ()
 
 parameter_values_simple_pendulum = [
     0.2,      #a[0]
-    10.0,     #d[0]
+    0.010,     #d[0]
     3.34,     #m[0]
     0.8512,   #m[1]
     0.0,      #J[0]

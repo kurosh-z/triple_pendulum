@@ -42,7 +42,7 @@ from traj_opt import *
 
 logging.basicConfig(
     filename='pen_odeint.log',
-    level=logging.DEBUG,
+    level=logging.CRITICAL ,
     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
 # logger = logging.getLogger()
@@ -129,7 +129,8 @@ P = odeint(riccati_diff_equ, Pe, t[::-1], args=(A_eq, B_eq, Q, R, dynamic_symbs)
 
 with open('P_matrix.pkl','wb' ) as file :
     dill.dump(P, file)
-'''
+
+'''    
 with open('P_matrix.pkl', 'rb') as file :
     P=dill.load(file)
 
@@ -141,11 +142,29 @@ K_matrix= generate_gain_matrix(R, B_eq, Psim, t, dynamic_symbs)
 # finding states of the system using calculated K_matrix and
 # comparing the results with desired trajecory !
 xdot_func= sympy_states_to_func(dynamic_symbs, param_list)
+ipydex.IPS()
 
 
-def pen_sim(x, t, xdot_func, K_matrix, Vect,  mode='Open_loop'):
+def ode_function(x, t, xdot_func, K_matrix, Vect,  mode='Open_loop'):
+    '''
+    it's the dx/dt=func(x, t, args)  to be used in odeint
+    (the first two arguments are system state x and time t)
+
+    there are two modes available:
+     - Open_loop is defualt and use for tracking (Folgerung)
+     - Closed_loop could be activated in mode and could be 
+       used as regulator (Regler)
+
+    ATTENTION :
+      - use sympy_states_to_func to produce xdot functions out of 
+        sympy expresisons. 
+        (you have to run sympy_state_to_func once and store the result
+        so you could pass it as xdot_func )
+
+    '''
     
     logging.debug('x_new: %s \n \n', x)
+    logging.debug('Debugging Message from ode_function')    
     logging.debug('----------------------------------------------------------------')
     n=len(Vect)
     xs=config.cs_ret[0](t)
@@ -183,12 +202,9 @@ def pen_sim(x, t, xdot_func, K_matrix, Vect,  mode='Open_loop'):
     
     return xdot
 
-#
-ipydex.IPS()
 
-# x_open_loop= odeint(pen_sim, xa, t, args=(xdot_func, K_matrix, t) )
-x_closed_loop= odeint(pen_sim, xa, t, args=(xdot_func, K_matrix, t, 'Closed_loop') )
-
+x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t) )
+# x_closed_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Closed_loop') )
 ipydex.IPS()
 
 '''

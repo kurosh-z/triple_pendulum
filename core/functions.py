@@ -166,7 +166,6 @@ def lqr(A, B, Q, R, additional_outputs=False):
     """
     #solving the algebric riccati equation
     P = linalg.solve_continuous_are(A, B, Q, R)
-    print("P in lqr :", P)
     #compute LQR gain
     k = np_inv(R) * (B.T).dot(P)
 
@@ -245,6 +244,7 @@ def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
       P_dot = -P * A - A.T * P + P * b * R**-1 * b.T * P - Q
     
     =========================================================
+
      INPUTS :
     
     - P
@@ -254,18 +254,34 @@ def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
     - Q
     - R
     - dynamic_symbs : list containing symbolic variable in A_equi 
-                      and B_equi ---> exmpel :
-                      dynamic_symb= [q0, q1, qdot0, qdot1, u]
+                      and B_equi .
+        example --->  dynamic_symb= [q0, q1, qdot0, qdot1, u]
+                
                 
     ===========================================================
+
      OUTPUTS:
      
     P_dot : numpy.array 
      
     '''
     # evaluating A_equi and B_equi at equilibrium point
-    x0 = config.cs_ret[0](t)
-    u0 = config.cs_ret[1](t)
+    logging.debug('P_new: %s \n \n', P)
+
+    logging.debug('Debuging Message from riccati_diff_equ')
+    logging.debug('---------------------------------------------------')
+    
+    logging.debug('t : %f \n', t)
+    if t<0 :
+        x0=[0, np.pi, 0, 0]
+        u0=[0]
+    else:    
+        x0 = config.cs_ret[0](t)
+        u0 = config.cs_ret[1](t)
+    
+    logging.debug('x0 : %s', x0)
+    logging.debug('u0 : %s \n', u0)
+    
 
     equilib_point = np.hstack((x0, u0))
     values_dict = dict(zip(dynamic_symbs, equilib_point))
@@ -276,17 +292,15 @@ def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
     # converting sympy.Matrix to numpy.array
     A = np.array(A.tolist()).astype(np.float64)
     B = np.array(B.tolist()).astype(np.float64)
-    # logger.debug('A_eq %f:', A)
-    # logger.debug('B_eq %f:', B)
+    
+    logging.debug('P_current: %s', P)
 
     P = P.reshape((4, 4))
     P_dot = -P.dot(A) - (A.T).dot(P) + P.dot(B.dot(np_inv(R) *
                                                    (B.T).dot(P))) - Q
-    # logger.debug('P_dot %f:', P_dot)
-    # print('P_dot ::', P_dot)
-    # ipydex.IPS()
 
     ret = P_dot.reshape(16)
+    logging.debug('p_dot: %s', ret)    
     return ret
 
 
@@ -325,11 +339,17 @@ def generate_gain_matrix(R, B_equi, P, Vect, dynamic_symbs):
 def sympy_states_to_func(dynamic_symbs, param_list):
     '''
     it converts symbolic state equations to functions
+
     ATTENTION :
        - the difference between this and qdd_to_func is
-         that qdd_to_func makes 'sympy' funcitons, sympy_states_to_func
-         on the other hand gives numpy functions !
+         that qdd_to_func returns 'sympy' funcitons, 
+         sympy_states_to_func on the other hand returns
+         numpy functions !
        -it uses fx, gx and parameter_values stored in config.py
+        fx and gx are calculated in sys_model.py and stored in 
+        config.fx_expr and config.gx_expr
+    ============================================================
+
     INPUTS:
     - dynamic_symbs : an iterable object containing symbolic 
       variables : ---> dynami_symbs= [q0, q1, qdot0, qdot1, u] 
@@ -344,15 +364,25 @@ def sympy_states_to_func(dynamic_symbs, param_list):
     u = dynamic_symbs[-1]
     num_states = len(dynamic_symbs) - 1
 
+    # logging.debug('u : %s', u)
+    
     fx = config.fx_expr
     gx = config.gx_expr
+    # logging.debug('fx_expr: %s', fx)
+    # logging.debug('gx_expr: %s', gx)
+
     xdot_expr = (fx + gx * u).subs(param_dict)
+    # logging.debug('xdot_exr: %s', xdot_expr)
+    
     xdot_func = [
         sm.lambdify(dynamic_symbs, xdot_expr[i], modules='numpy')
         for i in range(num_states)
     ]
     
     def state_func(state, inputs):
+        '''
+        given state and inputs it return x_dot
+        '''
         u, = inputs
         x = state
         xd0=  xdot_func[0](x[0], x[1], x[2], x[3], u)
