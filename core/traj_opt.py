@@ -1,9 +1,4 @@
 # coding: utf-8
-
-
-
-
-
 '''
 -----------
 To Do :
@@ -15,8 +10,8 @@ To Do :
 #=============================================================
 # Standard Python modules
 #=============================================================
-
-
+import sys, os
+import dill as pickle
 #=============================================================
 # External Python modules
 #=============================================================
@@ -28,8 +23,9 @@ import sympy as sm
 import sympy.physics.mechanics as me
 import numpy as np
 import mpmath as mp
-import scipy as sc 
+import scipy as sc
 from sympy import latex
+
 
 import symbtools as st
 import symbtools.modeltools as mt
@@ -45,33 +41,27 @@ from pytrajectory import log
 #from functions import *
 from sys_model import *
 import config
-#import ipydex
+# import ipydex
 
 #=============================================================
 # Trajectory Optimization
 #=============================================================
 
- 
-
-#ipydex.activate_ips_on_exception()
-
-
-
+# ipydex.activate_ips_on_exception()
 
 # defining system parameters
 #TO DO : system parameters should be read from a file !
 parameter_values = [(g, 9.81), (a[0], 0.2), (d[0], 0.010), (m[0], 3.34),
-                    (m[1], 0.8512), (J[0], 0), (J[1], 0.01980),(f,0)]
-param_dict=dict(parameter_values)
+                    (m[1], 0.8512), (J[0], 0), (J[1], 0.01980), (f, 0)]
+param_dict = dict(parameter_values)
 
 # converting sympy expressions to functions
 
-config.qdd_functions=convert_qdd_to_func(fx, gx, q, qdot, u, param_dict) 
+config.qdd_functions = convert_qdd_to_func(fx, gx, q, qdot, u, param_dict)
 
 # senkrechte Anfangs- und Endbedingungen
-xa = [0.0, np.pi , 0.0, 0.0]
-xb = [0.0, np.pi*0, 0.0, 0.0]
-
+xa = [0.0, np.pi, 0.0, 0.0]
+xb = [0.0, np.pi * 0, 0.0, 0.0]
 
 ua = [0.0]
 ub = [0.0]
@@ -92,15 +82,23 @@ else:
     {
         "use_std_approach": False,  # alte (unübliche Stützpunktdef.)
         "use_chains": False,  # Ausnutzung von Integratorketten
-
      }
 
 cs = control_sys = pytr.ControlSystem(
-    pytraj_rhs, a=0, b=2.0, xa=xa, xb=xb, ua=ua, ub=ub, **additional_parameters)
-cs_ret = cs.solve()
-
+    pytraj_rhs,
+    a=0,
+    b=2.0,
+    xa=xa,
+    xb=xb,
+    ua=ua,
+    ub=ub,
+    **additional_parameters)
+config.cs_ret = cs.solve()
 
 if cs.reached_accuracy:
     print("Pytrajecotry Succeeded!")
 
-#ipydex.IPS()
+# with open('xs.pkl', 'wb') as file:
+#     pickle.dump(cs_ret[0], file)
+
+# ipydex.IPS()

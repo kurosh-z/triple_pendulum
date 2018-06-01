@@ -1,7 +1,4 @@
-
-
-
-
+# coding: utf-8
 
 '''
 -----------
@@ -147,3 +144,5 @@ forcing_vector = sm.trigsimp(Kane.forcing_full)
 
 # finding fx and gx wiht qdd0 as input 
 fx, gx= generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u)
+config.fx_expr= (fx)
+config.gx_expr= (gx)

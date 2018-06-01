@@ -1,4 +1,3 @@
-
 '''
 Core Functions 
 
@@ -9,8 +8,10 @@ Kurosh Zamani
 -----------
 To Do :
   - solving compatility issues with python 2!
-  -
-  -
+    ( Python2 :function pytraj_rhs is still not generally
+     working with n other than 1! )
+  - its better to merge state_functions and convert_qdd_to_func
+    into a single function !
 
 
 '''
@@ -19,7 +20,7 @@ To Do :
 # Standard Python modules
 #=============================================================
 import os, sys
-
+import logging
 #=============================================================
 # External Python modules
 #=============================================================
@@ -30,10 +31,22 @@ import sympy as sm
 from sympy.solvers import solve
 import sympy.physics.mechanics as me
 import numpy as np
-import mpmath as mp
-from scipy import linalg 
+from numpy.linalg import inv as np_inv
+from scipy import linalg
 
 import config
+
+import ipydex
+# logging.basicConfig(level=logging.DEBUG)
+
+logger = logging.getLogger()
+handler = logging.StreamHandler()
+formatter = logging.Formatter(
+    '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
 #=============================================================
 # Functions
 #=============================================================
@@ -84,43 +97,63 @@ def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
     return fx, gx
 
 
-def linearize_state_equ(fx, gx , q, qdot, param_values, equilib_point, numpy_conv=True):
-    
+def linearize_state_equ(fx,
+                        gx,
+                        q,
+                        qdot,
+                        u,
+                        param_values,
+                        equilib_point=None,
+                        numpy_conv=True):
     '''
-    generate Linearzied form of state Equations in a given equilibrium point :
+    generate Linearzied form of state Equations at a given 
+    equilibrium point.
+    if equilib_point is None it returns A and B as sympy expressions
+    of x0 and u0 !
     
-                     xdot= fx + gx.u ---> x_dot= A.delta_x + B.delta_u
+         xdot= fx + gx.u ---> x_dot= A.delta_x + B.delta_u
      where :
-                     A= dfx/dxx|eq.Point + dgx/dxx|eq.Point 
-                     B= dg/du|eq.Point
+              A= dfx/dxx|eq.Point + dgx/dxx|eq.Point 
+              B= dg/du|eq.Point
                      
                      dim(A) : (n,n)
                      dim(B) : (n, 1)
-     where A and B are linearizations of fx and gx
-     
+    
+    =========================================================
      INPUTS :
+    =========================================================
      parameter_values : list of tupels --> [(symb1, val1), (symb2, val2), ...]
-     equilib_point    : sympy.Matrix   --> sm.Matrix([0.0, 0.0, 1.0, 2.0])
-     
-     
+     equilib_point    : a list containing --> [x0 , u0]  
+                    
+
+    ===========================================================
+     OUTPUTS:
+    =========================================================== 
+     By default "numpy.array" A , B
+     if nump_conv is False or no equilibrium point is given 
+     it returns "sympy.Matrix"  A , B
      
     '''
     #defining values_dict to be substituted in sympy expressions
-    qq=sm.Matrix([q, qdot])
-    values = list(map(lambda a,b :(a,b),qq, equilib_point)) + param_values
-    values_dict=dict(values)
-    
-    xx=sm.Matrix.hstack(sm.Matrix(q).T, sm.Matrix(qdot).T).T
-    fx_lin=fx.jacobian(xx).subs(values_dict)
-    gx_lin=gx.jacobian(xx).subs(values_dict)
-    
-    A=fx_lin+gx_lin
-    B=gx.subs(values_dict)
-    
-    if numpy_conv :
-        A= np.array(A.tolist()).astype(np.float64)
-        B= np.array(B.tolist()).astype(np.float64)
-    
+    if equilib_point is None:
+        values_dict = dict(param_values)
+        numpy_conv = False
+    else:
+        qq = q + qdot + [u]
+        values = zip(qq, equilib_point) + param_values
+        values_dict = dict(values)
+
+    xx = sm.Matrix.vstack(sm.Matrix(q), sm.Matrix(qdot))
+    df_dxx = fx.jacobian(xx)
+    dg_dxx = gx.jacobian(xx)
+
+    A = (df_dxx + dg_dxx * u).subs(values_dict)
+    B = gx.subs(values_dict)
+
+    if numpy_conv:
+        A = np.array(A.tolist()).astype(np.float64)
+        B = np.array(B.tolist()).astype(np.float64)
+
     return A, B
 
 
@@ -133,47 +166,48 @@ def lqr(A, B, Q, R, additional_outputs=False):
     """
     #solving the algebric riccati equation
     P = linalg.solve_continuous_are(A, B, Q, R)
-    
+    print("P in lqr :", P)
     #compute LQR gain
-    K = linalg.inv(R) * (B.T.dot(P))
-    
-    if additional_outputs :
-        eigVals, eigVec = linalg.eig(A - B * K)
-        ret= K, P, eigVals, eigVec
-    else :
-        ret =K
-        
-    
-    return ret    
+    k = np_inv(R) * (B.T).dot(P)
+
+    if additional_outputs:
+        eigVals, eigVec = linalg.eig(A - B * k)
+        ret = k, P, eigVals, eigVec
+    else:
+        ret = k
+
+    return ret
 
 
 def convert_qdd_to_func(fx, gx, q, qdot, u, param_dict=None):
-    
-    
     '''
-    generate rhs function for pytrajectory
-    
+    convert state equations form sympy to function
+    output is a list containing [qdd0, qdd1, qdd2, ... ]
+
+    TO DO:
+     - change it to be able to work with every n in python2
     '''
-    qdd_expr=fx+gx*u
-    
-    
-    #substituting parameters in qdd_expr 
+    qdd_expr = fx + gx * u
+
+    #substituting parameters in qdd_expr
     if isinstance(param_dict, dict):
-        qdd_expr= qdd_expr.subs(param_dict)
-    
+        qdd_expr = qdd_expr.subs(param_dict)
+
     #converting qdd_expr to function
-    
+
     #   TO DO :
     #  -resolving compatibility issues with python 2 !!!
 
     #qdd_func=[sm.lambdify([*q, *qdot, u], qdd_expr[i+len(q)], 'sympy') for i in range(len(q))]
-    qdd_func=[sm.lambdify([q[0],q[1] ,qdot[0],qdot[1] , u], qdd_expr[i+len(q)], 'sympy') for i in range(len(q))]
- 
+    qdd_func = [
+        sm.lambdify([q[0], q[1], qdot[0], qdot[1], u], qdd_expr[i + len(q)],
+                    'sympy') for i in range(len(q))
+    ]
+
     return qdd_func
 
 
 def pytraj_rhs(x, u, uref=None, t=None, pp=None):
-    
     '''
      right hand side function for pytrajecotry  
      YOU SHOULD: run convert_qdd_to_func once before using pytraj_rhs !!!
@@ -183,24 +217,162 @@ def pytraj_rhs(x, u, uref=None, t=None, pp=None):
     '''
     qq = x
     u0, = u
-    
-    
+
     #frist defining xd[0 to len(q)] as qdots / ATTENTION: len(qq) = 2*len(q)
-    q_dim=int(len(qq)/2)
-    xd=[x[i+q_dim] for i in range(q_dim)]
-    
+    q_dim = int(len(qq) / 2)
+    xd = [x[i + q_dim] for i in range(q_dim)]
 
     #   TO DO :
     #  -resolving compatibility issues with python 2 !!!
 
-    # xd[len(q)+1 to 2*len(q)] := qddts    
+    # xd[len(q)+1 to 2*len(q)] := qddts
     for i in range(q_dim):
-    #    xd.append(qdd_functions[i](*qq,u0))
-         xd.append(config.qdd_functions[i](qq[0], qq[1], qq[2], qq[3],u0))
+        #    xd.append(qdd_functions[i](*qq,u0))
+        xd.append(config.qdd_functions[i](qq[0], qq[1], qq[2], qq[3], u0))
+
+    ret = np.array(xd)
+
+    return ret
 
 
-    ret= np.array(xd)
+# riccuti differential equation
+def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
+    '''
+    =========================================================
+    DESCRIPTION :
+    it returns riccati differential equation :
 
-    return ret    
-
+      P_dot = -P * A - A.T * P + P * b * R**-1 * b.T * P - Q
     
+    =========================================================
+     INPUTS :
+    
+    - P
+    - t
+    - A_equi  : sympy.Matrix 
+    - B_equi  : sympy.Matrix 
+    - Q
+    - R
+    - dynamic_symbs : list containing symbolic variable in A_equi 
+                      and B_equi ---> exmpel :
+                      dynamic_symb= [q0, q1, qdot0, qdot1, u]
+                
+    ===========================================================
+     OUTPUTS:
+     
+    P_dot : numpy.array 
+     
+    '''
+    # evaluating A_equi and B_equi at equilibrium point
+    x0 = config.cs_ret[0](t)
+    u0 = config.cs_ret[1](t)
+
+    equilib_point = np.hstack((x0, u0))
+    values_dict = dict(zip(dynamic_symbs, equilib_point))
+
+    A = A_equi.subs(values_dict)
+    B = B_equi.subs(values_dict)
+
+    # converting sympy.Matrix to numpy.array
+    A = np.array(A.tolist()).astype(np.float64)
+    B = np.array(B.tolist()).astype(np.float64)
+    # logger.debug('A_eq %f:', A)
+    # logger.debug('B_eq %f:', B)
+
+    P = P.reshape((4, 4))
+    P_dot = -P.dot(A) - (A.T).dot(P) + P.dot(B.dot(np_inv(R) *
+                                                   (B.T).dot(P))) - Q
+    # logger.debug('P_dot %f:', P_dot)
+    # print('P_dot ::', P_dot)
+    # ipydex.IPS()
+
+    ret = P_dot.reshape(16)
+    return ret
+
+
+# lqr_tracking function :
+def generate_gain_matrix(R, B_equi, P, Vect, dynamic_symbs):
+    '''
+    returns input 'u' for tracking 
+    each row of K_matrix include gain k at time t
+     -->  num_rows= len(Vect), num_columns= 4
+                 
+    TO DO :
+     -change it so that it ables to function with every n !
+    '''
+    K_matrix = np.zeros((len(Vect), 4))
+
+    for i, t in enumerate(Vect):
+        P_eq = P[i, :].reshape(4, 4)
+
+        # evaluating  B_equi at equilibrium point
+        x0 = config.cs_ret[0](t)
+        u0 = config.cs_ret[1](t)
+        equilib_point = np.hstack((x0, u0))
+        values_dict = dict(zip(dynamic_symbs, equilib_point))
+
+        B = B_equi.subs(values_dict)
+        # converting B (sympy.Matrix) to numpy.array
+        B = np.array(B.tolist()).astype(np.float64)
+
+        # finding k and add it to K_matrix
+        K_matrix[i, :] = -np_inv(R) * B.T.dot(P_eq)
+
+    return K_matrix
+
+
+# converting symbolic state equations to functions
+def sympy_states_to_func(dynamic_symbs, param_list):
+    '''
+    it converts symbolic state equations to functions
+    ATTENTION :
+       - the difference between this and qdd_to_func is
+         that qdd_to_func makes 'sympy' funcitons, sympy_states_to_func
+         on the other hand gives numpy functions !
+       -it uses fx, gx and parameter_values stored in config.py
+    INPUTS:
+    - dynamic_symbs : an iterable object containing symbolic 
+      variables : ---> dynami_symbs= [q0, q1, qdot0, qdot1, u] 
+    - param_list :  
+
+    OUTPUTS :
+    - callable state_func(state, input) 
+    '''
+    # making a dictionary of parameters with dynamic_symbs as keys
+    param_dict = dict(param_list)
+
+    u = dynamic_symbs[-1]
+    num_states = len(dynamic_symbs) - 1
+
+    fx = config.fx_expr
+    gx = config.gx_expr
+    xdot_expr = (fx + gx * u).subs(param_dict)
+    xdot_func = [
+        sm.lambdify(dynamic_symbs, xdot_expr[i], modules='numpy')
+        for i in range(num_states)
+    ]
+    
+    def state_func(state, inputs):
+        u, = inputs
+        x = state
+        xd0=  xdot_func[0](x[0], x[1], x[2], x[3], u)
+        xd1=  xdot_func[1](x[0], x[1], x[2], x[3], u)
+        xd2=  xdot_func[2](x[0], x[1], x[2], x[3], u)
+        xd3=  xdot_func[3](x[0], x[1], x[2], x[3], u)
+
+        x_dot = np.array([xd0, xd1, xd2, xd3])
+        
+        return x_dot
+
+    return state_func
+
+
+# tracking function :
+# def tracking(K_matrix, Vect):
+#     '''
+#     using K_matrix it calculates the system_states x :
+#           xdot= fx + gx * (-K.T*x)
+
+#     ATTENTION : it uses qdd_fucntions stored in config
+#                 (it stored there if you already run traj_opt.py !)
+#     '''
