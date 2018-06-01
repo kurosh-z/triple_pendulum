@@ -1,5 +1,4 @@
 # coding: utf-8
-
 '''
 -----------
 To Do :
@@ -9,7 +8,6 @@ To Do :
 #=============================================================
 # Standard Python modules
 #=============================================================
-
 
 #=============================================================
 # External Python modules
@@ -22,15 +20,12 @@ import sympy as sm
 import sympy.physics.mechanics as me
 import numpy as np
 import mpmath as mp
-import scipy as sc 
-
-
+import scipy as sc
 
 #=============================================================
 # Standard Python modules
 #=============================================================
 from functions import *
-
 
 #=============================================================
 # Systme Model
@@ -43,14 +38,13 @@ q = me.dynamicsymbols('q:{}'.format(n + 1))  # generalized coordinates
 qdot = me.dynamicsymbols('qdot:{}'.format(n + 1))  #generalized speeds
 qdd = me.dynamicsymbols('qddot:{}'.format(n + 1))
 f = me.dynamicsymbols('f')
-u=sm.symbols('u')
+u = sm.symbols('u')
 m = sm.symbols('m:{}'.format(n + 1))
 J = sm.symbols('J:{}'.format(n + 1))
 l = sm.symbols('l:{}'.format(n))  # lenght of each pendlum
 a = sm.symbols('a:{}'.format(n))  #location of Mass-centers
 d = sm.symbols('d1:{}'.format(n + 1))  #viscous damping coef.
 g, t = sm.symbols('g t')
-
 
 # intertial reference frame
 In_frame = me.ReferenceFrame('In_frame')
@@ -82,15 +76,14 @@ torques = []
 # potentials = [cart_potential]
 # cart.potential_energy= cart_potential
 
-
 rigid_bodies = [cart]
 # Lagrangian0 = me.Lagrangian(In_frame, rigid_bodies[0])
 # Lagrangians=[Lagrangian0]
 
-
 for i in range(n):
     #Creating new reference frame
-    Li = In_frame.orientnew('L' + str(i), 'Axis', [sm.pi/2 - q[i + 1], In_frame.z])
+    Li = In_frame.orientnew('L' + str(i), 'Axis',
+                            [sm.pi / 2 - q[i + 1], In_frame.z])
     Li.set_ang_vel(In_frame, -qdot[i + 1] * In_frame.z)
     frames.append(Li)
 
@@ -106,18 +99,17 @@ for i in range(n):
 
     #adding forces
     forces.append((Pi, -m[i + 1] * g * In_frame.y))
-    
-    
+
     #adding torques
-    if i==0 :
-         torqueVectori = (-d[0] * qdot[1]) * frames[1].z
-         torques.append((Li, torqueVectori))
+    if i == 0:
+        torqueVectori = (-d[0] * qdot[1]) * frames[1].z
+        torques.append((Li, torqueVectori))
 
     else:
-        torqueVectori = -d[i] * (qdot[i+1]-qdot[i]) * In_frame.z
+        torqueVectori = -d[i] * (qdot[i + 1] - qdot[i]) * In_frame.z
         torques.append((Li, torqueVectori))
-    
-    #adding cential inertias 
+
+    #adding cential inertias
     IDi = me.inertia(frames[i + 1], 0, 0, J[i + 1])
     ICi = (IDi, mass_centers[i + 1])
     central_inertias.append(ICi)
@@ -127,9 +119,7 @@ for i in range(n):
     rigid_bodies.append(LBodyi)
 
     kindiffs.append(q[i + 1].diff(t) - qdot[i + 1])
-    
-  
-   
+
 #generalized force
 loads = torques + forces
 
@@ -142,7 +132,7 @@ forcing_vector = sm.trigsimp(Kane.forcing_full)
 
 #xdot_expr=(mass_matrix.inv()*forcing_vector)
 
-# finding fx and gx wiht qdd0 as input 
-fx, gx= generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u)
-config.fx_expr= (fx)
-config.gx_expr= (gx)
+# finding fx and gx wiht qdd0 as input
+fx, gx = generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u)
+config.fx_expr = (fx)
+config.gx_expr = (gx)

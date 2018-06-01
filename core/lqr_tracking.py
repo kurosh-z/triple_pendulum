@@ -2,9 +2,12 @@
 '''
 -----------
 To Do :
-  - parameter shoul be read from a file isntead of dictionary!
   - finding a general way to define Q and R according to number of pendulums
   - (should I have a dynamic way of changing  Q and R to find the best result ?! )
+  - find the better ways compatible with ptyhon2 of calculating things generally 
+    every n
+  - logging should be changed (maybe to a file instead of consol!)
+  -  visualization should be wiritten for genereal n pendulum 
 '''
 #=============================================================
 # Standard Python modules
@@ -42,7 +45,7 @@ from traj_opt import *
 
 # logging.basicConfig(
 #     filename='pen_odeint.log',
-#     level=logging.CRITICAL ,
+#     level=logging.CRITICAL,
 #     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
 # logger = logging.getLogger()
@@ -124,35 +127,35 @@ Pe0 = np.identity(4)
 Pe0 = Pe0.reshape(16)
 # logger.debug('Pe = y0 : %f', Pe0)
 # print ('Pe = y0 :', Pe0)
-
-P = odeint(riccati_diff_equ, Pe, t[::-1], args=(A_eq, B_eq, Q, R, dynamic_symbs))
 '''
+P = odeint(riccati_diff_equ, Pe, t[::-1], args=(A_eq, B_eq, Q, R, dynamic_symbs))
+
 with open('P_matrix.pkl','wb' ) as file :
     dill.dump(P, file)
 
-'''    
-with open('P_matrix.pkl', 'rb') as file :
-    P=dill.load(file)
+'''
+with open('P_matrix.pkl', 'rb') as file:
+    P = dill.load(file)
 # finding gain k for Tracking :
 
-Psim=P[::-1]
-K_matrix= generate_gain_matrix(R, B_eq, Psim, t, dynamic_symbs)
+Psim = P[::-1]
+K_matrix = generate_gain_matrix(R, B_eq, Psim, t, dynamic_symbs)
 
 # finding states of the system using calculated K_matrix and
 # comparing the results with desired trajecory !
-xdot_func= sympy_states_to_func(dynamic_symbs, param_list)
+xdot_func = sympy_states_to_func(dynamic_symbs, param_list)
 ipydex.IPS()
 
 
-def ode_function(x, t, xdot_func, K_matrix, Vect,  mode='Closed_loop'):
+def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
     '''
     it's the dx/dt=func(x, t, args)  to be used in odeint
     (the first two arguments are system state x and time t)
 
     there are two modes available:
-     - Closed_loop is defualt and use for tracking
-     - Open_loop could be activated in mode and could be 
-       used as regulator
+     - Closed_loop is defualt and can be used for tracking
+     - Open_loop could be activated by setting  mode='Open_loop'
+    
 
     ATTENTION :
       - use sympy_states_to_func to produce xdot functions out of 
@@ -161,64 +164,57 @@ def ode_function(x, t, xdot_func, K_matrix, Vect,  mode='Closed_loop'):
         so you could pass it as xdot_func )
 
     '''
-    if t>2 :
-        t=2
-        
-    logging.debug('x_new: %s \n \n', x)
-    logging.debug('Debugging Message from ode_function')    
-    logging.debug('----------------------------------------------------------------')
-    # n=len(Vect)
-    xs=config.cs_ret[0](t)
-    us=config.cs_ret[1](t)
-    
-    if mode == 'Closed_loop' :
-        k0 = np.interp(t, Vect, K_matrix[:, 0])
-        k1 = np.interp(t, Vect, K_matrix[:, 1])
-        k2 = np.interp(t, Vect, K_matrix[:, 2])
-        k3 = np.interp(t, Vect, K_matrix[:, 3])
+    if t > Vect[-1]:
+        t = Vect[-1]
 
-        k = np.array([k0, k1, k2, k3])
+    # logging.debug('x_new: %s \n \n', x)
+    # logging.debug('Debugging Message from ode_function')
+    # logging.debug(
+    #     '----------------------------------------------------------------')
+    # n=len(Vect)
+    xs = config.cs_ret[0](t)
+    us = config.cs_ret[1](t)
+    sys_dim= len(xs)  
+    if mode == 'Closed_loop':
+        k_list= [np.interp(t, Vect, K_matrix[:, i]) for i in range(sys_dim) ]
+        k = np.array(k_list)
         delta_x = x - xs
         delta_u = (-1) * k.T.dot(delta_x)
         inputs = us + delta_u
         # loggings :
-        logging.debug('k :%s', k)
-        logging.debug('delta_x: %s',delta_x)
-        logging.debug('delta_u: %s \n', delta_u)
-    elif mode == 'Open_loop' :
-        inputs= us
+        # logging.debug('k :%s', k)
+        # logging.debug('delta_x: %s', delta_x)
+        # logging.debug('delta_u: %s \n', delta_u)
+    elif mode == 'Open_loop':
+        inputs = us
 
-    state= x
-    logging.debug('t: %s \n', t)
-    
-    logging.debug('us: %s', us )
-    logging.debug('xs:%s \n',  xs)
-    logging.debug('state: %s', state)
-    logging.debug('inputs: %s \n', inputs)
-    
-    # ipydex.IPS()
-    xdot= xdot_func(state, inputs)
-    logging.debug('x_current: %s', x)    
-    logging.debug('xdot : %s ', xdot)
-    
+    state = x
+    # logging.debug('t: %s \n', t)
+
+    # logging.debug('us: %s', us)
+    # logging.debug('xs:%s \n', xs)
+    # logging.debug('state: %s', state)
+    # logging.debug('inputs: %s \n', inputs)
+
+    xdot = xdot_func(state, inputs)
+    # logging.debug('x_current: %s', x)
+    # logging.debug('xdot : %s ', xdot)
+
     return xdot
 
 
-x_closed_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t) )
+x_closed_loop = odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t))
 # x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
 ipydex.IPS()
 
-'''
-x_closed_loop=np.array(config.cs_ret[0](t).tolist())
+xs = np.array([config.cs_ret[0](time).tolist() for time in t])
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 fig, axes = plt.subplots()
-axes.plot(t, x_open_loop[:, 1] * 180 / np.pi, 'o')
-axes.plot(t, x_closed_loop[:]
-axes.plot(vect, K)
+axes.plot(t, x_closed_loop[:, 1] * 180 / np.pi, 'o')
+axes.plot(t, xs[:, 1] * 180 / np.pi)
+# axes.plot(vect, K)
 
 plt.show()
-
-'''
