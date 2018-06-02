@@ -416,3 +416,60 @@ def sympy_states_to_func(dynamic_symbs, param_list):
         return x_dot
 
     return state_func
+
+
+# ode_function to be used in odeint 
+def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
+    '''
+    it's the dx/dt=func(x, t, args)  to be used in odeint
+    (the first two arguments are system state x and time t)
+
+    there are two modes available:
+     - Closed_loop is defualt and can be used for tracking
+     - Open_loop could be activated by setting  mode='Open_loop'
+    
+
+    ATTENTION :
+      - use sympy_states_to_func to produce xdot functions out of 
+        sympy expresisons. 
+        (you have to run sympy_state_to_func once and store the result
+        so you could pass it as xdot_func )
+
+    '''
+    if t > Vect[-1]:
+        t = Vect[-1]
+
+    # logging.debug('x_new: %s \n \n', x)
+    # logging.debug('Debugging Message from ode_function')
+    # logging.debug(
+    #     '----------------------------------------------------------------')
+    # n=len(Vect)
+    xs = config.cs_ret[0](t)
+    us = config.cs_ret[1](t)
+    sys_dim= len(xs)  
+    if mode == 'Closed_loop':
+        k_list= [np.interp(t, Vect, K_matrix[:, i]) for i in range(sys_dim) ]
+        k = np.array(k_list)
+        delta_x = x - xs
+        delta_u = (-1) * k.T.dot(delta_x)
+        inputs = us + delta_u
+        # loggings :
+        # logging.debug('k :%s', k)
+        # logging.debug('delta_x: %s', delta_x)
+        # logging.debug('delta_u: %s \n', delta_u)
+    elif mode == 'Open_loop':
+        inputs = us
+
+    state = x
+    # logging.debug('t: %s \n', t)
+
+    # logging.debug('us: %s', us)
+    # logging.debug('xs:%s \n', xs)
+    # logging.debug('state: %s', state)
+    # logging.debug('inputs: %s \n', inputs)
+
+    xdot = xdot_func(state, inputs)
+    # logging.debug('x_current: %s', x)
+    # logging.debug('xdot : %s ', xdot)
+
+    return xdot
