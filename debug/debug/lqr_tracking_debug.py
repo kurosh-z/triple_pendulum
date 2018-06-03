@@ -2,12 +2,9 @@
 '''
 -----------
 To Do :
+  - parameter shoul be read from a file isntead of dictionary!
   - finding a general way to define Q and R according to number of pendulums
   - (should I have a dynamic way of changing  Q and R to find the best result ?! )
-  - find the better ways compatible with ptyhon2 of calculating things generally 
-    every n
-  - logging should be changed (maybe to a file instead of consol!)
-  -  visualization should be wiritten for genereal n pendulum 
 '''
 #=============================================================
 # Standard Python modules
@@ -36,16 +33,16 @@ import ipydex
 #=============================================================
 # Standard Python modules
 #=============================================================
-from functions import *
-from sys_model import *
-from traj_opt import *
+from functions_debug import *
+from sys_model_debug import *
+from traj_opt_debug import *
 #=============================================================
 # Lqr control for top equilibrium point
 #=============================================================
 
 # logging.basicConfig(
 #     filename='pen_odeint.log',
-#     level=logging.CRITICAL,
+#     level=logging.CRITICAL ,
 #     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
 
 # logger = logging.getLogger()
@@ -57,8 +54,23 @@ from traj_opt import *
 # logger.setLevel(logging.DEBUG)
 
 ipydex.activate_ips_on_exception()
-# defining equilibrium point for system linearization at top
-x0=[ 0.0 for i in range(2*len(q))]
+
+# Defining equilibrium point and system parameters
+if n == 1:
+    param_values = config.parameter_values_simple_pendulum
+    x0 = [0., 0., 0., 0.]
+
+elif n == 2:
+    param_values = config.parameter_values_double_pendulum
+    x0 = [0., 0., 0., 0., 0., 0.]
+
+elif n == 3:
+    param_values = config.parameter_values_triple_pendulum
+    x0 = [0., 0., 0., 0., 0., 0., 0., 0.]
+
+param_symb = list(a + d + m + J + (g, f))
+param_list = zip(param_symb, param_values)
+
 u0 = [0.0]
 equilibrium_point = x0 + u0
 
@@ -113,45 +125,100 @@ Pe0 = Pe0.reshape(16)
 # logger.debug('Pe = y0 : %f', Pe0)
 # print ('Pe = y0 :', Pe0)
 
-P = odeint(
-    riccati_diff_equ, Pe, t[::-1], args=(A_eq, B_eq, Q, R, dynamic_symbs))
-
-if n == 1:
-    with open('P_matrix.pkl', 'wb') as file:
-        dill.dump(P, file)
-elif n == 2:
-    with open('P_matrix_double.pkl', 'wb') as file:
-        dill.dump(P, file)
-elif n == 3:
-    with open('P_matrix_triple.pkl', 'wb') as file:
-        dill.dump(P, file)
+P = odeint(riccati_diff_equ, Pe, t[::-1], args=(A_eq, B_eq, Q, R, dynamic_symbs))
 '''
-with open('P_matrix.pkl', 'rb') as file:
-    P = dill.load(file)
-'''
+with open('P_matrix.pkl','wb' ) as file :
+    dill.dump(P, file)
 
+'''    
+with open('P_matrix.pkl', 'rb') as file :
+    P=dill.load(file)
 # finding gain k for Tracking :
 
-Psim = P[::-1]
-K_matrix = generate_gain_matrix(R, B_eq, Psim, t, dynamic_symbs)
+Psim=P[::-1]
+K_matrix= generate_gain_matrix(R, B_eq, Psim, t, dynamic_symbs)
 
 # finding states of the system using calculated K_matrix and
 # comparing the results with desired trajecory !
-xdot_func = sympy_states_to_func(dynamic_symbs, param_list)
+xdot_func= sympy_states_to_func(dynamic_symbs, param_list)
 ipydex.IPS()
 
-x_closed_loop = odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t))
+
+def ode_function(x, t, xdot_func, K_matrix, Vect,  mode='Closed_loop'):
+    '''
+    it's the dx/dt=func(x, t, args)  to be used in odeint
+    (the first two arguments are system state x and time t)
+
+    there are two modes available:
+     - Closed_loop is defualt and use for tracking
+     - Open_loop could be activated in mode and could be 
+       used as regulator
+
+    ATTENTION :
+      - use sympy_states_to_func to produce xdot functions out of 
+        sympy expresisons. 
+        (you have to run sympy_state_to_func once and store the result
+        so you could pass it as xdot_func )
+
+    '''
+    if t>2 :
+        t=2
+        
+    logging.debug('x_new: %s \n \n', x)
+    logging.debug('Debugging Message from ode_function')    
+    logging.debug('----------------------------------------------------------------')
+    # n=len(Vect)
+    xs=config.cs_ret[0](t)
+    us=config.cs_ret[1](t)
+    
+    if mode == 'Closed_loop' :
+        k0 = np.interp(t, Vect, K_matrix[:, 0])
+        k1 = np.interp(t, Vect, K_matrix[:, 1])
+        k2 = np.interp(t, Vect, K_matrix[:, 2])
+        k3 = np.interp(t, Vect, K_matrix[:, 3])
+
+        k = np.array([k0, k1, k2, k3])
+        delta_x = x - xs
+        delta_u = (-1) * k.T.dot(delta_x)
+        inputs = us + delta_u
+        # loggings :
+        logging.debug('k :%s', k)
+        logging.debug('delta_x: %s',delta_x)
+        logging.debug('delta_u: %s \n', delta_u)
+    elif mode == 'Open_loop' :
+        inputs= us
+
+    state= x
+    logging.debug('t: %s \n', t)
+    
+    logging.debug('us: %s', us )
+    logging.debug('xs:%s \n',  xs)
+    logging.debug('state: %s', state)
+    logging.debug('inputs: %s \n', inputs)
+    
+    # ipydex.IPS()
+    xdot= xdot_func(state, inputs)
+    logging.debug('x_current: %s', x)    
+    logging.debug('xdot : %s ', xdot)
+    
+    return xdot
+
+
+x_closed_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t) )
 # x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
 ipydex.IPS()
 
-xs = np.array([config.cs_ret[0](time).tolist() for time in t])
+'''
+x_closed_loop=np.array(config.cs_ret[0](t).tolist())
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 fig, axes = plt.subplots()
-axes.plot(t, x_closed_loop[:, 1] * 180 / np.pi, 'o')
-axes.plot(t, xs[:, 1] * 180 / np.pi)
-# axes.plot(vect, K)
+axes.plot(t, x_open_loop[:, 1] * 180 / np.pi, 'o')
+axes.plot(t, x_closed_loop[:]
+axes.plot(vect, K)
 
 plt.show()
+
+'''

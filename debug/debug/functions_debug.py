@@ -37,16 +37,15 @@ from scipy import linalg
 import config
 
 import ipydex
-
 # logging.basicConfig(level=logging.DEBUG)
 
-# logger = logging.getLogger()
-# handler = logging.StreamHandler()
-# formatter = logging.Formatter(
-#     '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-# handler.setFormatter(formatter)
-# logger.addHandler(handler)
-# logger.setLevel(logging.DEBUG)
+logger = logging.getLogger()
+handler = logging.StreamHandler()
+formatter = logging.Formatter(
+    '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 #=============================================================
 # Functions
@@ -87,11 +86,9 @@ def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
 
     fx = sm.zeros(len(xx_dot), 1)
     gx = sm.zeros(len(xx_dot), 1)
-
     for i in range(len(qdot)):
         fx[i] = qdot[i]
         gx[i] = 0.0
-
     for i in range(len(qdot) + 1, len(xx_dot)):
         indx = i - (len(qdot) + 1)
         fx[i] = collected_qdd[indx][1]
@@ -111,9 +108,8 @@ def linearize_state_equ(fx,
     '''
     generate Linearzied form of state Equations at a given 
     equilibrium point.
-    if equilib_point is None or nump_conv set to False it
-    returns A and B as sympy expressions of symbolic
-    x0 and u0 !
+    if equilib_point is None it returns A and B as sympy expressions
+    of x0 and u0 !
     
          xdot= fx + gx.u ---> x_dot= A.delta_x + B.delta_u
      where :
@@ -126,18 +122,16 @@ def linearize_state_equ(fx,
     =========================================================
      INPUTS :
     =========================================================
-     -parameter_values : list of tupels --> 
-                        [(symb1, val1), (symb2, val2), ...]
-
-     -equilib_point    : a list containing --> [x0 , u0]  
+     parameter_values : list of tupels --> [(symb1, val1), (symb2, val2), ...]
+     equilib_point    : a list containing --> [x0 , u0]  
                     
 
     ===========================================================
      OUTPUTS:
     =========================================================== 
-     - By default "numpy.array" A , B
-     - if nump_conv is False or no equilibrium point is given 
-       it returns "sympy.Matrix"  A , B
+     By default "numpy.array" A , B
+     if nump_conv is False or no equilibrium point is given 
+     it returns "sympy.Matrix"  A , B
      
     '''
     #defining values_dict to be substituted in sympy expressions
@@ -183,7 +177,35 @@ def lqr(A, B, Q, R, additional_outputs=False):
 
     return ret
 
+"""
+old_working : 
+def convert_qdd_to_func(fx, gx, q, qdot, u, param_dict=None):
+    '''
+    convert state equations form sympy to function
+    output is a list containing [qdd0, qdd1, qdd2, ... ]
 
+    TO DO:
+     - change it to be able to work with every n in python2
+    '''
+    qdd_expr = fx + gx * u
+
+    #substituting parameters in qdd_expr
+    if isinstance(param_dict, dict):
+        qdd_expr = qdd_expr.subs(param_dict)
+
+    #converting qdd_expr to function
+
+    #   TO DO :
+    #  -resolving compatibility issues with python 2 !!!
+
+    #qdd_func=[sm.lambdify([*q, *qdot, u], qdd_expr[i+len(q)], 'sympy') for i in range(len(q))]
+    qdd_func = [
+        sm.lambdify([q[0], q[1], qdot[0], qdot[1], u], qdd_expr[i + len(q)],
+                    'sympy') for i in range(len(q))
+    ]
+
+    return qdd_func
+"""
 def convert_qdd_to_func(fx, gx, q, qdot, u, param_dict=None):
     '''
     convert state equations form sympy to functions
@@ -203,8 +225,35 @@ def convert_qdd_to_func(fx, gx, q, qdot, u, param_dict=None):
     ]
 
     return qdd_func
+"""
+old working :
+def pytraj_rhs(x, u, uref=None, t=None, pp=None):
+    '''
+     right hand side function for pytrajecotry  
+     YOU SHOULD: run convert_qdd_to_func once before using pytraj_rhs !!!
+     
+     GOOD TO KNOW :for pytraj rhs function must be defined as a "sympy" function!
+     
+    '''
+    qq = x
+    u0, = u
 
+    #frist defining xd[0 to len(q)] as qdots / ATTENTION: len(qq) = 2*len(q)
+    q_dim = int(len(qq) / 2)
+    xd = [x[i + q_dim] for i in range(q_dim)]
 
+    #   TO DO :
+    #  -resolving compatibility issues with python 2 !!!
+
+    # xd[len(q)+1 to 2*len(q)] := qddts
+    for i in range(q_dim):
+        #    xd.append(qdd_functions[i](*qq,u0))
+        xd.append(config.qdd_functions[i](qq[0], qq[1], qq[2], qq[3], u0))
+
+    ret = np.array(xd)
+
+    return ret
+"""
 def pytraj_rhs(x, u, uref=None, t=None, pp=None):
     '''
      right hand side function for pytrajecotry  
@@ -217,7 +266,7 @@ def pytraj_rhs(x, u, uref=None, t=None, pp=None):
     qq = x
     u0, = u
 
-    #frist defining xd[0 to len(q)] as qdots / ATTENTION: len(qq) = 2*len(q)
+    # first defining xd[0 to len(q)] as qdots / ATTENTION: len(qq) = 2*len(q)
     q_len = int(len(qq) / 2)
     xd = [x[i + q_len] for i in range(q_len)]
 
@@ -239,7 +288,6 @@ def pytraj_rhs(x, u, uref=None, t=None, pp=None):
     ret = np.array(xd)
 
     return ret
-
 
 # riccuti differential equation
 def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
@@ -273,25 +321,22 @@ def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
      
     '''
     # evaluating A_equi and B_equi at equilibrium point
-    # logging.debug('P_new: %s \n \n', P)
+    logging.debug('P_new: %s \n \n', P)
 
-    # logging.debug('Debuging Message from riccati_diff_equ')
-    # logging.debug('---------------------------------------------------')
-
-    # logging.debug('t : %f \n', t)
-    # extra conditions just for the case that odeint use samples
-    # outside of the our t=(0, end_time)
-    len_q = int((len(dynamic_symbs) - 1) / 2)
-    if t < 0:
-        x0 = [0] + [np.pi
-                    for i in range(len_q - 1)] + [0.0 for i in range(len_q)]
-        u0 = [0]
-    else:
+    logging.debug('Debuging Message from riccati_diff_equ')
+    logging.debug('---------------------------------------------------')
+    
+    logging.debug('t : %f \n', t)
+    if t<0 :
+        x0=[0, np.pi, 0, 0]
+        u0=[0]
+    else:    
         x0 = config.cs_ret[0](t)
         u0 = config.cs_ret[1](t)
-
-    # logging.debug('x0 : %s', x0)
-    # logging.debug('u0 : %s \n', u0)
+    
+    logging.debug('x0 : %s', x0)
+    logging.debug('u0 : %s \n', u0)
+    
 
     equilib_point = np.hstack((x0, u0))
     values_dict = dict(zip(dynamic_symbs, equilib_point))
@@ -302,15 +347,15 @@ def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
     # converting sympy.Matrix to numpy.array
     A = np.array(A.tolist()).astype(np.float64)
     B = np.array(B.tolist()).astype(np.float64)
+    
+    logging.debug('P_current: %s', P)
 
-    # logging.debug('P_current: %s', P)
-
-    P = P.reshape((2 * len_q, 2 * len_q))
+    P = P.reshape((4, 4))
     P_dot = -P.dot(A) - (A.T).dot(P) + P.dot(B.dot(np_inv(R) *
                                                    (B.T).dot(P))) - Q
 
-    ret = P_dot.reshape((2 * len_q)**2)
-    # logging.debug('p_dot: %s', ret)
+    ret = P_dot.reshape(16)
+    logging.debug('p_dot: %s', ret)    
     return ret
 
 
@@ -321,13 +366,13 @@ def generate_gain_matrix(R, B_equi, P, Vect, dynamic_symbs):
     each row of K_matrix include gain k at time t
      -->  num_rows= len(Vect), num_columns= 4
                  
+    TO DO :
+     -change it so that it ables to function with every n !
     '''
-    # K_matrix is a m*n matrix with m=len(Vect) and n=len_states :
-    len_states = len(dynamic_symbs) - 1
-    K_matrix = np.zeros((len(Vect), len_states))
+    K_matrix = np.zeros((len(Vect), 4))
 
     for i, t in enumerate(Vect):
-        P_eq = P[i, :].reshape( len_states, len_states)
+        P_eq = P[i, :].reshape(4, 4)
 
         # evaluating  B_equi at equilibrium point
         x0 = config.cs_ret[0](t)
@@ -375,7 +420,7 @@ def sympy_states_to_func(dynamic_symbs, param_list):
     num_states = len(dynamic_symbs) - 1
 
     # logging.debug('u : %s', u)
-
+    
     fx = config.fx_expr
     gx = config.gx_expr
     # logging.debug('fx_expr: %s', fx)
@@ -383,95 +428,36 @@ def sympy_states_to_func(dynamic_symbs, param_list):
 
     xdot_expr = (fx + gx * u).subs(param_dict)
     # logging.debug('xdot_exr: %s', xdot_expr)
-
+    
     xdot_func = [
         sm.lambdify(dynamic_symbs, xdot_expr[i], modules='numpy')
         for i in range(num_states)
     ]
-
+    
     def state_func(state, inputs):
         '''
         given state and inputs it return x_dot
         '''
         u, = inputs
         x = state
-        len_states = len(x)
-        if len_states == 4:
-            xd = [
-                xdot_func[i](x[0], x[1], x[2], x[3], u) for i in range(len_states)
-            ]
-        elif len_states == 6:
-            xd = [
-                xdot_func[i](x[0], x[1], x[2], x[3], x[4], x[5], u)
-                for i in range(len_states)
-            ]
-        elif len_states == 8:
-            xd = [
-                xdot_func[i](x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], u)
-                for i in range(len_states)
-            ]
+        xd0=  xdot_func[0](x[0], x[1], x[2], x[3], u)
+        xd1=  xdot_func[1](x[0], x[1], x[2], x[3], u)
+        xd2=  xdot_func[2](x[0], x[1], x[2], x[3], u)
+        xd3=  xdot_func[3](x[0], x[1], x[2], x[3], u)
 
-        x_dot = np.array(xd)
-
+        x_dot = np.array([xd0, xd1, xd2, xd3])
+        
         return x_dot
 
     return state_func
 
 
-# ode_function to be used in odeint
-def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
-    '''
-    it's the dx/dt=func(x, t, args)  to be used in odeint
-    (the first two arguments are system state x and time t)
+# tracking function :
+# def tracking(K_matrix, Vect):
+#     '''
+#     using K_matrix it calculates the system_states x :
+#           xdot= fx + gx * (-K.T*x)
 
-    there are two modes available:
-     - Closed_loop is defualt and can be used for tracking
-     - Open_loop could be activated by setting  mode='Open_loop'
-    
-
-    ATTENTION :
-      - use sympy_states_to_func to produce xdot functions out of 
-        sympy expresisons. 
-        (you have to run sympy_state_to_func once and store the result
-        so you could pass it as xdot_func )
-
-    '''
-    # logging.debug('x_new: %s \n \n', x)
-    # logging.debug('Debugging Message from ode_function')
-    # logging.debug(
-    #     '----------------------------------------------------------------')
-    # n=len(Vect)
-    logging.debug('t: %s \n', t)
-    
-    if t > Vect[-1]:
-        t = Vect[-1]
-
-    
-    xs = config.cs_ret[0](t)
-    us = config.cs_ret[1](t)
-    sys_dim = len(xs)
-    if mode == 'Closed_loop':
-        k_list = [np.interp(t, Vect, K_matrix[:, i]) for i in range(sys_dim)]
-        k = np.array(k_list)
-        delta_x = x - xs
-        delta_u = (-1) * k.T.dot(delta_x)
-        inputs = us + delta_u
-        # loggings :
-        logging.debug('k :%s', k)
-        logging.debug('delta_x: %s', delta_x)
-        # logging.debug('delta_u: %s \n', delta_u)
-    elif mode == 'Open_loop':
-        inputs = us
-
-    state = x
-
-    # logging.debug('us: %s', us)
-    # logging.debug('xs:%s \n', xs)
-    # logging.debug('state: %s', state)
-    # logging.debug('inputs: %s \n', inputs)
-
-    xdot = xdot_func(state, inputs)
-    # logging.debug('x_current: %s', x)
-    # logging.debug('xdot : %s ', xdot)
-
-    return xdot
+#     ATTENTION : it uses qdd_fucntions stored in config
+#                 (it stored there if you already run traj_opt.py !)
+#     '''

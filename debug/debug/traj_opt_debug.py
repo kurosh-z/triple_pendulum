@@ -26,45 +26,45 @@ import mpmath as mp
 import scipy as sc
 from sympy import latex
 
+
 import symbtools as st
 import symbtools.modeltools as mt
 import symbtools.noncommutativetools as nct
 from scipy.integrate import odeint
 import pytrajectory as pytr
 from pytrajectory import log
-log.console_handler.setLevel(10)
+#log.console_handler.setLevel(10)
 
 #=============================================================
 # My Python modules
 #=============================================================
 #from functions import *
-from sys_model import *
+from sys_model_debug import *
 import config
-import ipydex
+# import ipydex
 
 #=============================================================
 # Trajectory Optimization
 #=============================================================
 
-ipydex.activate_ips_on_exception()
+# ipydex.activate_ips_on_exception()
 
 # defining system parameters
 #TO DO : system parameters should be read from a file !
-# parameter_values = [(g, 9.81), (a[0], 0.2), (d[0], 0.010), (m[0], 3.34),
-#                     (m[1], 0.8512), (J[0], 0), (J[1], 0.01980), (f, 0)]
-# param_dict = dict(parameter_values)
+parameter_values = [(g, 9.81), (a[0], 0.2), (d[0], 0.010), (m[0], 3.34),
+                    (m[1], 0.8512), (J[0], 0), (J[1], 0.01980), (f, 0)]
+param_dict = dict(parameter_values)
 
-# converting sympy expressions to functions to b used in pytrj_rhs
+# converting sympy expressions to functions
 
 config.qdd_functions = convert_qdd_to_func(fx, gx, q, qdot, u, param_dict)
 
 # senkrechte Anfangs- und Endbedingungen
-xa = [0.0] + [np.pi for i in range(len(q) - 1)] + [0.0 for i in range(len(q))]
-xb = [0.0 for i in range(2 * len(q))]
-ipydex.IPS()
+xa = [0.0, np.pi, 0.0, 0.0]
+xb = [0.0, np.pi * 0, 0.0, 0.0]
+
 ua = [0.0]
 ub = [0.0]
-
 
 if int(pytr.__version__.split(".")[1]) > 2:
     # zusätzliche Parameter, die notwendig sind, damit auch develop-Version konvergiert
