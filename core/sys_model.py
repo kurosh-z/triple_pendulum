@@ -8,13 +8,14 @@ To Do :
 #=============================================================
 # Standard Python modules
 #=============================================================
-
+import sys, os
+import dill
 #=============================================================
 # External Python modules
 #=============================================================
 #from __future__ import division, print_function
 from sympy.physics.vector import init_vprinting, vlatex
-init_vprinting(use_latex='mathjax', pretty_print=False)
+init_vprinting(use_latex='mathjax', pretty_print=True)
 
 import sympy as sm
 import sympy.physics.mechanics as me
@@ -26,6 +27,7 @@ import scipy as sc
 # Standard Python modules
 #=============================================================
 from functions import *
+import config
 
 #=============================================================
 # Systme Model
@@ -33,7 +35,7 @@ from functions import *
 
 # Defining symbolic Variables
 
-n = 2
+n = 1
 q = me.dynamicsymbols('q:{}'.format(n + 1))  # generalized coordinates
 qdot = me.dynamicsymbols('qdot:{}'.format(n + 1))  #generalized speeds
 qdd = me.dynamicsymbols('qddot:{}'.format(n + 1))
@@ -41,8 +43,8 @@ f = me.dynamicsymbols('f')
 u = sm.symbols('u')
 m = sm.symbols('m:{}'.format(n + 1))
 J = sm.symbols('J:{}'.format(n + 1))
-l = sm.symbols('l1:{}'.format(n+1))  # lenght of each pendlum
-a = sm.symbols('a1:{}'.format(n+1))  #location of Mass-centers
+l = sm.symbols('l1:{}'.format(n + 1))  # lenght of each pendlum
+a = sm.symbols('a1:{}'.format(n + 1))  #location of Mass-centers
 d = sm.symbols('d1:{}'.format(n + 1))  #viscous damping coef.
 g, t = sm.symbols('g t')
 
@@ -132,7 +134,6 @@ forcing_vector = sm.trigsimp(Kane.forcing_full)
 
 #xdot_expr=(mass_matrix.inv()*forcing_vector)
 
-
 # defining parameter values according to number of pendulum n :
 if n == 1:
     param_values = config.parameter_values_simple_pendulum
@@ -143,19 +144,40 @@ elif n == 2:
 elif n == 3:
     param_values = config.parameter_values_triple_pendulum
 
-param_symb = list( l + a + m  + J + d + (g, f))
+param_symb = list(l + a + m + J + d + (g, f))
 param_list = zip(param_symb, param_values)
 param_dict = dict(param_list)
 
-
 # substituting parameters to mass and forcing_vector
-mass_matrix_simplified= mass_matrix.subs(param_dict).simplify()
-forcing_vector_simplified= forcing_vector.subs(param_dict).simplify()
+mass_matrix_simplified = mass_matrix.subs(param_dict).simplify()
+forcing_vector_simplified = forcing_vector.subs(param_dict).simplify()
 # finding fx and gx wiht qdd0 as input
-fx, gx = generate_state_equ(mass_matrix_simplified, forcing_vector_simplified, qdot, qdd, u)
+fx, gx = generate_state_equ(mass_matrix_simplified, forcing_vector_simplified,
+                            qdot, qdd, u)
 config.fx_expr = (fx)
 config.gx_expr = (gx)
 
 print(
-    'system model succesfully finished ! \n fx_expr and gx_expr are stored in config.py'
+    'system model succesfully finished ! \nfx_expr and gx_expr are stored in config.py'
 )
+'''
+# store system model as binary file to be used later
+if n == 1:
+    with open('sys_model_simple.pkl', 'wb') as file:
+        dill.dump((fx, gx), file)
+
+elif n == 2:
+    with open('sys_model_double.pkl', 'wb') as file:
+        dill.dump((fx, gx), file)
+elif n == 3:
+    with open('sys_model_triple.pkl', 'wb') as file:
+        dill.dump((fx, gx), file)
+'''
+'''
+with open('P_matrix.pkl', 'rb') as file:
+    P = dill.load(file)
+'''
+'''
+print('syt_model is stored as binary file')
+'''
+ipydex.IPS()

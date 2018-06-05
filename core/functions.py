@@ -53,6 +53,7 @@ import ipydex
 #=============================================================
 
 
+
 def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
     '''
     given mass_matrix and forcing_vector of a Kane's Method it
@@ -61,7 +62,86 @@ def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
                
                   'ATTENTION : it assumes qdd0 as an Input u'
     
+
     '''
+    len_q = len(qdd)
+    expr = mass_matrix * sm.Matrix(qdot + qdd).subs(dict([(qdd[0], u)]))
+
+    # expr_u = expr[len_q] - forcing_vector[len_q]
+    expr_qdd = [(expr[i] - forcing_vector[i]).expand()
+                for i in range(len_q + 1, 2 * len_q)]
+    # using collect to find the terms with qdd for each raw
+    collected_qdd_expr = [
+        sm.collect(expr_qdd[i], qdd[j], evaluate=False)[qdd[j]]
+        for i in range(len_q - 1) for j in range(1, len(qdd))
+    ]
+    
+    # storing coefficents of qdds to a matrix
+
+    # --> for example finding a1, a2 in expr[0] :expr[0]= a1*qdd[1] + a2*qdd[2]
+    # each raw of qdd_coeff_matrix include coeff. for each raw of qdd
+    qdd_coeff_matrix = sm.ImmutableMatrix(collected_qdd_expr).reshape(
+        len(qdd) - 1,
+        len(qdd) - 1)
+    
+    # simplifying the matrix !
+    qdd_coeff_matrix = sm.trigsimp(qdd_coeff_matrix)
+    
+    # qdd_vect is just qdd without qdd[0] !
+    qdd_vect = sm.ImmutableMatrix([qdd[i] for i in range(1, len(qdd))])
+    
+    # finding terms without qdd thease are the constant vector
+    qdd_const_vector = sm.ImmutableMatrix(expr_qdd) - qdd_coeff_matrix * qdd_vect
+    
+    print('starting simplification')
+    # simplifying the results ! we want the constants on the
+    # other side of the equations so we should multiply it by -1 !
+    qdd_const_vector = (-1) * sm.trigsimp(qdd_const_vector)
+    # qdd_const_vector = (-1) * qdd_const_vector
+    print('we are calculating qdd, its gonna take a while !')
+    
+    # solving the linear system for qddots :
+    # --->  qdd_coeff_matrix * qdd_vect = qdd_const_vector
+
+    sol_qdd = qdd_coeff_matrix.inv() * qdd_const_vector
+    print('qdd is ready!' )
+    # sometimes collec() dosent return wrong results without expanding
+    # the expressions first ! so we have to expand :-D
+    sol_list = [sol_qdd[i].expand() for i in range(len_q - 1)]
+
+    # finding terms with and without input u to determine fx and gx
+    collected_qdd = [
+        sm.collect(sol_list[i], u, evaluate=False) for i in range(len_q - 1)
+    ]
+
+    fx = sm.zeros(2 * len_q, 1)
+    gx = sm.zeros(2 * len_q, 1)
+    
+    for i in range(len_q):
+        fx[i] = qdot[i]
+
+    for i in range(len_q + 1, 2 * len_q):
+        indx = i - (len_q + 1)
+        fx[i] = collected_qdd[indx][1]
+        gx[i] = collected_qdd[indx][u]
+
+    gx[len_q] = 1
+     
+    fx=sm.ImmutableMatrix(fx).simplify()
+    gx=sm.ImmutableMatrix(gx).simplify()
+    return fx, gx
+
+
+def generate_state_equ_old(mass_matrix, forcing_vector, qdot, qdd, u):
+    '''
+    given mass_matrix and forcing_vector of a Kane's Method it
+    generates state equation :
+                         xdot=f(x)+g(x).u
+               
+                  'ATTENTION : it assumes qdd0 as an Input u'
+    
+    '''
+
     xx_dot = sm.Matrix.hstack(sm.Matrix(qdot).T, sm.Matrix(qdd).T).T
 
     #finding qddot as a function of u (u=qdd0)
@@ -71,11 +151,12 @@ def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
     expr = expr.subs(dict([(qdd[0], u)]))
 
     #finding qddts in respect to qdots and u
-    expr_list = [expr[i] for i in range(3, len(qdd) + 2)]
+    expr_list = [expr[i] for i in range(len(qdd) + 1, 2 * len(qdd))]
+
     var_list = [qdd[i] for i in range(1, len(qdd))]
-
+    print('variables and expressions are ready')
     sol = solve(expr_list, var_list)
-
+    print('solving for qddots is finished!')
     #determining fx and gx
     qdd_expr = [sol[qdd[i]].expand() for i in range(1, len(qdd))]
 
@@ -84,10 +165,10 @@ def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
         sm.collect(qdd_expr[i], u, evaluate=False)
         for i in range(len(qdd) - 1)
     ]
-
+    print('collecting terms is finished')
     fx = sm.zeros(len(xx_dot), 1)
     gx = sm.zeros(len(xx_dot), 1)
-
+    print('fx and gx are ready')
     for i in range(len(qdot)):
         fx[i] = qdot[i]
         gx[i] = 0.0
@@ -96,8 +177,27 @@ def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
         indx = i - (len(qdot) + 1)
         fx[i] = collected_qdd[indx][1]
         gx[i] = collected_qdd[indx][u]
-    gx[2] = 1
+    gx[len(qdd)] = 1
     return fx, gx
+
+def generate_state_equ_test(mass_matrix, forcing_vector, qdot, qdd, u):
+    '''
+    given mass_matrix and forcing_vector of a Kane's Method it
+    generates state equation :
+                         xdot=f(x)+g(x).u
+               
+                  'ATTENTION : it assumes qdd0 as an Input u'
+    
+    '''
+
+    xdot = mass_matrix.inv() * forcing_vector
+    fx = sm.Matrix([xdot[i] for i in range(2 * len(qdot))])
+    fx[len(qdot)] = 0
+    gx = sm.zeros(2 * len(qdot), 1)
+    gx[len(qdot)] = 1
+
+    return fx, gx
+
 
 
 def linearize_state_equ(fx,
@@ -196,7 +296,7 @@ def convert_qdd_to_func(fx, gx, q, qdot, u, param_dict=None):
     if isinstance(param_dict, dict):
         qdd_expr = qdd_expr.subs(param_dict)
 
-    #converting qdd_expr to function
+    #converting qdd_expr to sympy function !
     qdd_func = [
         sm.lambdify(q + qdot + [u], qdd_expr[i + len(q)], 'sympy')
         for i in range(len(q))
@@ -281,6 +381,7 @@ def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
     # logging.debug('t : %f \n', t)
     # extra conditions just for the case that odeint use samples
     # outside of the our t=(0, end_time)
+    print('riccati t: ', t)
     len_q = int((len(dynamic_symbs) - 1) / 2)
     if t < 0:
         x0 = [0] + [np.pi
@@ -319,7 +420,7 @@ def generate_gain_matrix(R, B_equi, P, Vect, dynamic_symbs):
     '''
     returns input 'u' for tracking 
     each row of K_matrix include gain k at time t
-     -->  num_rows= len(Vect), num_columns= 4
+     -->  num_rows= len(Vect), num_columns= len(states)
                  
     '''
     # K_matrix is a m*n matrix with m=len(Vect) and n=len_states :
@@ -327,7 +428,7 @@ def generate_gain_matrix(R, B_equi, P, Vect, dynamic_symbs):
     K_matrix = np.zeros((len(Vect), len_states))
 
     for i, t in enumerate(Vect):
-        P_eq = P[i, :].reshape( len_states, len_states)
+        P_eq = P[i, :].reshape(len_states, len_states)
 
         # evaluating  B_equi at equilibrium point
         x0 = config.cs_ret[0](t)
@@ -398,7 +499,8 @@ def sympy_states_to_func(dynamic_symbs, param_list):
         len_states = len(x)
         if len_states == 4:
             xd = [
-                xdot_func[i](x[0], x[1], x[2], x[3], u) for i in range(len_states)
+                xdot_func[i](x[0], x[1], x[2], x[3], u)
+                for i in range(len_states)
             ]
         elif len_states == 6:
             xd = [
@@ -441,12 +543,11 @@ def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
     # logging.debug(
     #     '----------------------------------------------------------------')
     # n=len(Vect)
-    logging.debug('t: %s \n', t)
-    
+    # logging.debug('t: %s \n', t)
+
     if t > Vect[-1]:
         t = Vect[-1]
 
-    
     xs = config.cs_ret[0](t)
     us = config.cs_ret[1](t)
     sys_dim = len(xs)
@@ -457,8 +558,8 @@ def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
         delta_u = (-1) * k.T.dot(delta_x)
         inputs = us + delta_u
         # loggings :
-        logging.debug('k :%s', k)
-        logging.debug('delta_x: %s', delta_x)
+        # logging.debug('k :%s', k)
+        # logging.debug('delta_x: %s', delta_x)
         # logging.debug('delta_u: %s \n', delta_u)
     elif mode == 'Open_loop':
         inputs = us

@@ -64,9 +64,9 @@ equilibrium_point = x0 + u0
 
 # linearization of model @ equilibrium point
 A, B = linearize_state_equ(fx, gx, q, qdot, u, param_list, equilibrium_point)
-
+print('linearized model is ready')
 # lqr control to find K (we need it as a boundry-value (Pe) for our tracking !)
-Q = np.identity(4)
+Q = np.identity(2*len(q))
 R = 0.01 * np.identity(1)
 # k_top = lqr(A, B, Q, R)
 results = lqr(A, B, Q, R, additional_outputs=True)
@@ -91,7 +91,7 @@ for i in range(len(q)):
 Pe=np.diag(diag_Pe)
 '''
 
-Pe = results[1].reshape(16)
+Pe = results[1].reshape((2*len(q))**2)
 
 # lqr tracking of the desired trajectory :
 # determining linearized model at any equilibrium point
@@ -104,15 +104,9 @@ frames_per_sec = 15
 final_time = 2
 t = np.linspace(0.0, final_time, final_time * frames_per_sec)
 
-# P_dot= riccati_diff_equ(Pe, final_time, A_eq, B_eq, Q, R, dynamic_symbs)
-Pe0 = np.identity(4)
-# converting Matrix to Vector to be able to use in odeint
-#   we're converting it back again to a Matrix ! (it also need some changes
-#   in riccati_diff_equ function !)
-Pe0 = Pe0.reshape(16)
-# logger.debug('Pe = y0 : %f', Pe0)
-# print ('Pe = y0 :', Pe0)
 
+
+print('Integrating riccati differential equations to find P matrix :') 
 P = odeint(
     riccati_diff_equ, Pe, t[::-1], args=(A_eq, B_eq, Q, R, dynamic_symbs))
 
@@ -126,23 +120,32 @@ elif n == 3:
     with open('P_matrix_triple.pkl', 'wb') as file:
         dill.dump(P, file)
 '''
-with open('P_matrix.pkl', 'rb') as file:
-    P = dill.load(file)
+if n == 1 :
+    with open('P_matrix.pkl', 'rb') as file:
+        P = dill.load(file)
+if n== 2 :
+    with open('P_matrix_double.pkl', 'rb') as file:
+        P = dill.load(file)
+if n== 3 :
+    with open('P_matrix_triple.pkl', 'rb') as file:
+        P = dill.load(file)   
 '''
+
 
 # finding gain k for Tracking :
 
+print('generating gain_matrix using P')
 Psim = P[::-1]
 K_matrix = generate_gain_matrix(R, B_eq, Psim, t, dynamic_symbs)
-
+print('gain matrix is ready!')
+ipydex.IPS()
 # finding states of the system using calculated K_matrix and
 # comparing the results with desired trajecory !
 xdot_func = sympy_states_to_func(dynamic_symbs, param_list)
-ipydex.IPS()
 
+print('integrating to find x_closed_loop')
 x_closed_loop = odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t))
 # x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
-ipydex.IPS()
 
 xs = np.array([config.cs_ret[0](time).tolist() for time in t])
 
@@ -155,3 +158,4 @@ axes.plot(t, xs[:, 1] * 180 / np.pi)
 # axes.plot(vect, K)
 
 plt.show()
+ipydex.IPS()

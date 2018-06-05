@@ -11,7 +11,8 @@ To Do :
 # Standard Python modules
 #=============================================================
 import sys, os
-import dill as pickle
+# import dill as pickle
+# import logging
 #=============================================================
 # External Python modules
 #=============================================================
@@ -65,7 +66,7 @@ ipydex.IPS()
 ua = [0.0]
 ub = [0.0]
 
-
+print('ready to start trajectory optimiztion !  \nxa:\nxb:\n ', xa, xb)
 if int(pytr.__version__.split(".")[1]) > 2:
     # zusätzliche Parameter, die notwendig sind, damit auch develop-Version konvergiert
 
@@ -101,4 +102,4 @@ if cs.reached_accuracy:
 # with open('xs.pkl', 'wb') as file:
 #     pickle.dump(cs_ret[0], file)
 
-# ipydex.IPS()
+ipydex.IPS()
