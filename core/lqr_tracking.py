@@ -30,7 +30,7 @@ from numpy.linalg import inv as np_inv
 import scipy as sc
 from scipy.integrate import odeint
 
-from odeintw import odeintw
+# from odeintw import odeintw
 
 import ipydex
 #=============================================================

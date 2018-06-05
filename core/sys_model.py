@@ -35,7 +35,7 @@ import config
 
 # Defining symbolic Variables
 
-n = 1
+n = 3
 q = me.dynamicsymbols('q:{}'.format(n + 1))  # generalized coordinates
 qdot = me.dynamicsymbols('qdot:{}'.format(n + 1))  #generalized speeds
 qdd = me.dynamicsymbols('qddot:{}'.format(n + 1))
@@ -74,7 +74,7 @@ central_inertias = [cart_central_inertia]
 forces = [(C0, f * In_frame.x - m[0] * g * In_frame.y)]
 torques = []
 
-# cart_potential = 1 / 2 * d[0] * qdot[1]**2
+# cart_potential = 1 / 3 * d[0] * qdot[1]**3
 # potentials = [cart_potential]
 # cart.potential_energy= cart_potential
 
@@ -85,7 +85,7 @@ rigid_bodies = [cart]
 for i in range(n):
     #Creating new reference frame
     Li = In_frame.orientnew('L' + str(i), 'Axis',
-                            [sm.pi / 2 - q[i + 1], In_frame.z])
+                            [sm.pi / 3 - q[i + 1], In_frame.z])
     Li.set_ang_vel(In_frame, -qdot[i + 1] * In_frame.z)
     frames.append(Li)
 
@@ -148,11 +148,12 @@ param_symb = list(l + a + m + J + d + (g, f))
 param_list = zip(param_symb, param_values)
 param_dict = dict(param_list)
 
+ipydex.IPS()
 # substituting parameters to mass and forcing_vector
 mass_matrix_simplified = mass_matrix.subs(param_dict).simplify()
 forcing_vector_simplified = forcing_vector.subs(param_dict).simplify()
 # finding fx and gx wiht qdd0 as input
-fx, gx = generate_state_equ(mass_matrix_simplified, forcing_vector_simplified,
+fx, gx = generate_state_equ_new(mass_matrix_simplified, forcing_vector_simplified,
                             qdot, qdd, u)
 config.fx_expr = (fx)
 config.gx_expr = (gx)
@@ -166,7 +167,7 @@ if n == 1:
     with open('sys_model_simple.pkl', 'wb') as file:
         dill.dump((fx, gx), file)
 
-elif n == 2:
+elif n == 3:
     with open('sys_model_double.pkl', 'wb') as file:
         dill.dump((fx, gx), file)
 elif n == 3:

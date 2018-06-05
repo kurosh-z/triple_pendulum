@@ -52,6 +52,91 @@ import ipydex
 # Functions
 #=============================================================
 
+def generate_state_equ_new(mass_matrix, forcing_vector, qdot, qdd, u):
+    '''
+    given mass_matrix and forcing_vector of a Kane's Method it
+    generates state equation :
+                         xdot=f(x)+g(x).u
+               
+                  'ATTENTION : it assumes qdd0 as an Input u'
+    
+
+    '''
+    len_q = len(qdd)
+    expr = mass_matrix * sm.Matrix(qdot + qdd).subs(dict([(qdd[0], u)]))
+
+    # expr_u = expr[len_q] - forcing_vector[len_q]
+    expr_qdd = [(expr[i] - forcing_vector[i]).expand()
+                for i in range(len_q + 1, 2 * len_q)]
+    # using collect to find the terms with qdd for each raw
+    collected_qdd_expr = [
+        sm.collect(expr_qdd[i], qdd[j], evaluate=False)[qdd[j]]
+        for i in range(len_q - 1) for j in range(1, len(qdd))
+    ]
+    
+    # storing coefficents of qdds to a matrix
+
+    # --> for example finding a1, a2 in expr[0] :expr[0]= a1*qdd[1] + a2*qdd[2]
+    # each raw of qdd_coeff_matrix include coeff. for each raw of qdd
+    qdd_coeff_matrix = sm.ImmutableMatrix(collected_qdd_expr).reshape(
+        len(qdd) - 1,
+        len(qdd) - 1)
+    
+    # simplifying the matrix !
+    qdd_coeff_matrix = sm.trigsimp(qdd_coeff_matrix)
+    
+    # qdd_vect is just qdd without qdd[0] !
+    qdd_vect = sm.ImmutableMatrix([qdd[i] for i in range(1, len(qdd))])
+    
+    # finding terms without qdd thease are the constant vector
+    qdd_const_vector = sm.ImmutableMatrix(expr_qdd) - qdd_coeff_matrix * qdd_vect
+    
+    print('starting simplification')
+    # simplifying the results ! we want the constants on the
+    # other side of the equations so we should multiply it by -1 !
+    qdd_const_vector = (-1) * sm.trigsimp(qdd_const_vector)
+    # qdd_const_vector = (-1) * qdd_const_vector
+    print('we are calculating qdd, its gonna take a while !')
+    
+    # solving the linear system for qddots :
+    # --->  qdd_coeff_matrix * qdd_vect = qdd_const_vector1 + qdd_const_vector2
+    #                         qdd_const_vector1 : inculde terms without u
+    #                         qdd_const_vector2 : inlcude terms with u 
+     
+    collected_qdd_const_vector = [
+        sm.collect(qdd_const_vector[i].expand(), u, evaluate=False) for i in range(len_q - 1)
+    ]
+
+    qdd_const_vector1=sm.ImmutableMatrix([collected_qdd_const_vector[i][1] for i in range(len_q -1) ])
+    qdd_const_vector2=sm.ImmutableMatrix([collected_qdd_const_vector[i][u] for i in range(len_q -1) ])
+    print('inversing qdd_coeff_matrix')
+    qdd_coeff_matrix_inv=qdd_coeff_matrix.inv()
+    print('inversion of qdd_coeff_matrix finished')
+    
+    # sol1+sol2 is (qdd1, qdd2, ...)
+    sol1= qdd_coeff_matrix_inv * qdd_const_vector1
+    sol2= qdd_coeff_matrix_inv * qdd_const_vector2
+    
+    # defining fx and gx :
+    fx = sm.zeros(2 * len_q, 1)
+    gx = sm.zeros(2 * len_q, 1)
+    
+    for i in range(len_q):
+        fx[i] = qdot[i]
+
+    for i in range(len_q + 1, 2 * len_q):
+        indx = i - (len_q + 1)
+        fx[i] = sol1[indx]
+        gx[i] = sol2[indx]
+        
+    gx[len_q] = 1
+    
+    return fx, gx
+
+
+
+
+
 
 
 def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):

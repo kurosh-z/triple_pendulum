@@ -33,7 +33,7 @@ import symbtools.noncommutativetools as nct
 from scipy.integrate import odeint
 import pytrajectory as pytr
 from pytrajectory import log
-log.console_handler.setLevel(10)
+# log.console_handler.setLevel(10)
 
 #=============================================================
 # My Python modules
