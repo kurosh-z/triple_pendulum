@@ -34,7 +34,7 @@ import numpy as np
 from numpy.linalg import inv as np_inv
 from scipy import linalg
 
-import config
+import cfg
 
 import ipydex
 
@@ -51,6 +51,7 @@ import ipydex
 #=============================================================
 # Functions
 #=============================================================
+
 
 def generate_state_equ_new(mass_matrix, forcing_vector, qdot, qdd, u):
     '''
@@ -73,7 +74,7 @@ def generate_state_equ_new(mass_matrix, forcing_vector, qdot, qdd, u):
         sm.collect(expr_qdd[i], qdd[j], evaluate=False)[qdd[j]]
         for i in range(len_q - 1) for j in range(1, len(qdd))
     ]
-    
+
     # storing coefficents of qdds to a matrix
 
     # --> for example finding a1, a2 in expr[0] :expr[0]= a1*qdd[1] + a2*qdd[2]
@@ -81,46 +82,50 @@ def generate_state_equ_new(mass_matrix, forcing_vector, qdot, qdd, u):
     qdd_coeff_matrix = sm.ImmutableMatrix(collected_qdd_expr).reshape(
         len(qdd) - 1,
         len(qdd) - 1)
-    
+
     # simplifying the matrix !
     qdd_coeff_matrix = sm.trigsimp(qdd_coeff_matrix)
-    
+
     # qdd_vect is just qdd without qdd[0] !
     qdd_vect = sm.ImmutableMatrix([qdd[i] for i in range(1, len(qdd))])
-    
+
     # finding terms without qdd thease are the constant vector
-    qdd_const_vector = sm.ImmutableMatrix(expr_qdd) - qdd_coeff_matrix * qdd_vect
-    
+    qdd_const_vector = sm.ImmutableMatrix(
+        expr_qdd) - qdd_coeff_matrix * qdd_vect
+
     print('starting simplification')
     # simplifying the results ! we want the constants on the
     # other side of the equations so we should multiply it by -1 !
     qdd_const_vector = (-1) * sm.trigsimp(qdd_const_vector)
     # qdd_const_vector = (-1) * qdd_const_vector
     print('we are calculating qdd, its gonna take a while !')
-    
+
     # solving the linear system for qddots :
     # --->  qdd_coeff_matrix * qdd_vect = qdd_const_vector1 + qdd_const_vector2
     #                         qdd_const_vector1 : inculde terms without u
-    #                         qdd_const_vector2 : inlcude terms with u 
-     
+    #                         qdd_const_vector2 : inlcude terms with u
+
     collected_qdd_const_vector = [
-        sm.collect(qdd_const_vector[i].expand(), u, evaluate=False) for i in range(len_q - 1)
+        sm.collect(qdd_const_vector[i].expand(), u, evaluate=False)
+        for i in range(len_q - 1)
     ]
 
-    qdd_const_vector1=sm.ImmutableMatrix([collected_qdd_const_vector[i][1] for i in range(len_q -1) ])
-    qdd_const_vector2=sm.ImmutableMatrix([collected_qdd_const_vector[i][u] for i in range(len_q -1) ])
+    qdd_const_vector1 = sm.ImmutableMatrix(
+        [collected_qdd_const_vector[i][1] for i in range(len_q - 1)])
+    qdd_const_vector2 = sm.ImmutableMatrix(
+        [collected_qdd_const_vector[i][u] for i in range(len_q - 1)])
     print('inversing qdd_coeff_matrix')
-    qdd_coeff_matrix_inv=qdd_coeff_matrix.inv()
+    qdd_coeff_matrix_inv = qdd_coeff_matrix.inv()
     print('inversion of qdd_coeff_matrix finished')
-    
+
     # sol1+sol2 is (qdd1, qdd2, ...)
-    sol1= qdd_coeff_matrix_inv * qdd_const_vector1
-    sol2= qdd_coeff_matrix_inv * qdd_const_vector2
-    
+    sol1 = qdd_coeff_matrix_inv * qdd_const_vector1
+    sol2 = qdd_coeff_matrix_inv * qdd_const_vector2
+
     # defining fx and gx :
     fx = sm.zeros(2 * len_q, 1)
     gx = sm.zeros(2 * len_q, 1)
-    
+
     for i in range(len_q):
         fx[i] = qdot[i]
 
@@ -128,15 +133,10 @@ def generate_state_equ_new(mass_matrix, forcing_vector, qdot, qdd, u):
         indx = i - (len_q + 1)
         fx[i] = sol1[indx]
         gx[i] = sol2[indx]
-        
+
     gx[len_q] = 1
-    
+
     return fx, gx
-
-
-
-
-
 
 
 def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
@@ -160,7 +160,7 @@ def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
         sm.collect(expr_qdd[i], qdd[j], evaluate=False)[qdd[j]]
         for i in range(len_q - 1) for j in range(1, len(qdd))
     ]
-    
+
     # storing coefficents of qdds to a matrix
 
     # --> for example finding a1, a2 in expr[0] :expr[0]= a1*qdd[1] + a2*qdd[2]
@@ -168,28 +168,29 @@ def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
     qdd_coeff_matrix = sm.ImmutableMatrix(collected_qdd_expr).reshape(
         len(qdd) - 1,
         len(qdd) - 1)
-    
+
     # simplifying the matrix !
     qdd_coeff_matrix = sm.trigsimp(qdd_coeff_matrix)
-    
+
     # qdd_vect is just qdd without qdd[0] !
     qdd_vect = sm.ImmutableMatrix([qdd[i] for i in range(1, len(qdd))])
-    
+
     # finding terms without qdd thease are the constant vector
-    qdd_const_vector = sm.ImmutableMatrix(expr_qdd) - qdd_coeff_matrix * qdd_vect
-    
+    qdd_const_vector = sm.ImmutableMatrix(
+        expr_qdd) - qdd_coeff_matrix * qdd_vect
+
     print('starting simplification')
     # simplifying the results ! we want the constants on the
     # other side of the equations so we should multiply it by -1 !
     qdd_const_vector = (-1) * sm.trigsimp(qdd_const_vector)
     # qdd_const_vector = (-1) * qdd_const_vector
     print('we are calculating qdd, its gonna take a while !')
-    
+
     # solving the linear system for qddots :
     # --->  qdd_coeff_matrix * qdd_vect = qdd_const_vector
 
     sol_qdd = qdd_coeff_matrix.inv() * qdd_const_vector
-    print('qdd is ready!' )
+    print('qdd is ready!')
     # sometimes collec() dosent return wrong results without expanding
     # the expressions first ! so we have to expand :-D
     sol_list = [sol_qdd[i].expand() for i in range(len_q - 1)]
@@ -201,7 +202,7 @@ def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
 
     fx = sm.zeros(2 * len_q, 1)
     gx = sm.zeros(2 * len_q, 1)
-    
+
     for i in range(len_q):
         fx[i] = qdot[i]
 
@@ -211,9 +212,9 @@ def generate_state_equ(mass_matrix, forcing_vector, qdot, qdd, u):
         gx[i] = collected_qdd[indx][u]
 
     gx[len_q] = 1
-     
-    fx=sm.ImmutableMatrix(fx).simplify()
-    gx=sm.ImmutableMatrix(gx).simplify()
+
+    fx = sm.ImmutableMatrix(fx).simplify()
+    gx = sm.ImmutableMatrix(gx).simplify()
     return fx, gx
 
 
@@ -265,6 +266,7 @@ def generate_state_equ_old(mass_matrix, forcing_vector, qdot, qdd, u):
     gx[len(qdd)] = 1
     return fx, gx
 
+
 def generate_state_equ_test(mass_matrix, forcing_vector, qdot, qdd, u):
     '''
     given mass_matrix and forcing_vector of a Kane's Method it
@@ -284,25 +286,20 @@ def generate_state_equ_test(mass_matrix, forcing_vector, qdot, qdd, u):
     return fx, gx
 
 
-
 def linearize_state_equ(fx,
                         gx,
-                        q,
-                        qdot,
-                        u,
-                        param_values,
-                        equilib_point=None,
-                        numpy_conv=True):
+                        dynamics_symbs,
+                        operation_point=None,
+                        output_mode='numpy_array'):
     '''
+
     generate Linearzied form of state Equations at a given 
     equilibrium point.
-    if equilib_point is None or nump_conv set to False it
-    returns A and B as sympy expressions of symbolic
-    x0 and u0 !
+    
     
          xdot= fx + gx.u ---> x_dot= A.delta_x + B.delta_u
      where :
-              A= dfx/dxx|eq.Point + dgx/dxx|eq.Point 
+              A= dfx/dxx|eq.Point + dgx/dxx.u|eq.Point 
               B= dg/du|eq.Point
                      
                      dim(A) : (n,n)
@@ -310,42 +307,56 @@ def linearize_state_equ(fx,
     
     =========================================================
      INPUTS :
-    =========================================================
-     -parameter_values : list of tupels --> 
-                        [(symb1, val1), (symb2, val2), ...]
+     -dynamics_symbs : a list containg q , qdot and u--> 
+                        [q0, q1, qdot0, qdot1 , u]
 
-     -equilib_point    : a list containing --> [x0 , u0]  
+     -operation_point    : a list containing --> [x0 , u0]  
                     
 
     ===========================================================
      OUTPUTS:
-    =========================================================== 
-     - By default "numpy.array" A , B
-     - if nump_conv is False or no equilibrium point is given 
-       it returns "sympy.Matrix"  A , B
+     - By default "numpy_array" A , B
+     - if output_mode = "sympy_func"
+       it returns A , B  as sympy functions of operating point 
      
     '''
-    #defining values_dict to be substituted in sympy expressions
-    if equilib_point is None:
-        values_dict = dict(param_values)
-        numpy_conv = False
-    else:
-        qq = q + qdot + [u]
-        values = zip(qq, equilib_point) + param_values
-        values_dict = dict(values)
-
+    # finding q , qdot and u
+    u= dynamics_symbs[-1]
+    len_q= int((len(dynamics_symbs)-1) / 2)
+    q=dynamics_symbs[0:len_q]
+    qdot=dynamics_symbs[len_q:2*len_q]
+    
+    # calculating jacobians
     xx = sm.Matrix.vstack(sm.Matrix(q), sm.Matrix(qdot))
     df_dxx = fx.jacobian(xx)
     dg_dxx = gx.jacobian(xx)
 
-    A = (df_dxx + dg_dxx * u).subs(values_dict)
-    B = gx.subs(values_dict)
+    if output_mode == 'numpy_array':
 
-    if numpy_conv:
-        A = np.array(A.tolist()).astype(np.float64)
-        B = np.array(B.tolist()).astype(np.float64)
+        values = zip(dynamics_symbs, operation_point)
+        values_dict = dict(values)
 
-    return A, B
+        # inserting operation point !
+        A = (df_dxx + dg_dxx * u).subs(values_dict)
+        B = gx.subs(values_dict)
+
+        # converting to numpy
+        A_numpy = np.array(A.tolist()).astype(np.float64)
+        B_numpy = np.array(B.tolist()).astype(np.float64)
+        print('A_numpy')
+        ret = A_numpy, B_numpy
+
+    elif output_mode == 'sympy_func':
+        
+        A = df_dxx + dg_dxx * u
+        B = gx
+        A_func = sm.lambdify(dynamics_symbs, A, 'sympy')
+        B_func = sm.lambdify(dynamics_symbs, B, 'sympy')
+        print('A_func ')
+        ret= A_func, B_func
+
+
+    return ret
 
 
 def lqr(A, B, Q, R, additional_outputs=False):
@@ -369,22 +380,25 @@ def lqr(A, B, Q, R, additional_outputs=False):
     return ret
 
 
-def convert_qdd_to_func(fx, gx, q, qdot, u, param_dict=None):
+def convert_qdd_to_func(fx, gx, dynamic_symbs, param_dict=None):
     '''
     convert state equations form sympy to functions
     output is a list containing [qdd0, qdd1, qdd2, ... ]
 
     '''
-    qdd_expr = fx + gx * u
+    u= dynamic_symbs[-1]
+    len_q= int((len(dynamic_symbs)-1) / 2)
 
+    qdd_expr = fx + gx * u
+    
     #substituting parameters in qdd_expr
     if isinstance(param_dict, dict):
         qdd_expr = qdd_expr.subs(param_dict)
 
     #converting qdd_expr to sympy function !
     qdd_func = [
-        sm.lambdify(q + qdot + [u], qdd_expr[i + len(q)], 'sympy')
-        for i in range(len(q))
+        sm.lambdify(dynamic_symbs, qdd_expr[i + len_q], 'sympy')
+        for i in range(len_q)
     ]
 
     return qdd_func
@@ -401,24 +415,22 @@ def pytraj_rhs(x, u, uref=None, t=None, pp=None):
     '''
     qq = x
     u0, = u
+    qdd_functions= cfg.pendata.trajectory.qdd_functions
 
     #frist defining xd[0 to len(q)] as qdots / ATTENTION: len(qq) = 2*len(q)
     q_len = int(len(qq) / 2)
     xd = [x[i + q_len] for i in range(q_len)]
 
-    #   TO DO :
-    #  -resolving compatibility issues with python 2 !!!
-
     # xd[len(q)+1 to 2*len(q)] := qddts
     for i in range(q_len):
         #    xd.append(qdd_functions[i](*qq,u0))
         if len(qq) == 4:
-            xd.append(config.qdd_functions[i](qq[0], qq[1], qq[2], qq[3], u0))
+            xd.append(qdd_functions[i](qq[0], qq[1], qq[2], qq[3], u0))
         elif len(qq) == 6:
-            xd.append(config.qdd_functions[i](qq[0], qq[1], qq[2], qq[3],
+            xd.append(qdd_functions[i](qq[0], qq[1], qq[2], qq[3],
                                               qq[4], qq[5], u0))
         elif len(qq) == 8:
-            xd.append(config.qdd_functions[i](qq[0], qq[1], qq[2], qq[3],
+            xd.append(qdd_functions[i](qq[0], qq[1], qq[2], qq[3],
                                               qq[4], qq[5], qq[6], qq[7], u0))
 
     ret = np.array(xd)
@@ -427,7 +439,7 @@ def pytraj_rhs(x, u, uref=None, t=None, pp=None):
 
 
 # riccuti differential equation
-def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
+def riccati_diff_equ(P, t, A_func, B_func, Q, R, dynamic_symbs):
     '''
     =========================================================
     DESCRIPTION :
@@ -468,22 +480,23 @@ def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
     # outside of the our t=(0, end_time)
     print('riccati t: ', t)
     len_q = int((len(dynamic_symbs) - 1) / 2)
+    cs_ret= cfg.pendata.trajectory.cs_ret
+
+
     if t < 0:
         x0 = [0] + [np.pi
                     for i in range(len_q - 1)] + [0.0 for i in range(len_q)]
         u0 = [0]
     else:
-        x0 = config.cs_ret[0](t)
-        u0 = config.cs_ret[1](t)
+        x0 = cs_ret[0](t)
+        u0 = cs_ret[1](t)
 
     # logging.debug('x0 : %s', x0)
     # logging.debug('u0 : %s \n', u0)
 
     equilib_point = np.hstack((x0, u0))
-    values_dict = dict(zip(dynamic_symbs, equilib_point))
-
-    A = A_equi.subs(values_dict)
-    B = B_equi.subs(values_dict)
+    A = A_func(*equilib_point)
+    B = B_func(*equilib_point)
 
     # converting sympy.Matrix to numpy.array
     A = np.array(A.tolist()).astype(np.float64)
@@ -501,27 +514,28 @@ def riccati_diff_equ(P, t, A_equi, B_equi, Q, R, dynamic_symbs):
 
 
 # lqr_tracking function :
-def generate_gain_matrix(R, B_equi, P, Vect, dynamic_symbs):
+def generate_gain_matrix(R, B_func, P, Vect, dynamic_symbs):
     '''
     returns input 'u' for tracking 
     each row of K_matrix include gain k at time t
      -->  num_rows= len(Vect), num_columns= len(states)
                  
     '''
+    cs_ret= cfg.pendata.trajectory.cs_ret
     # K_matrix is a m*n matrix with m=len(Vect) and n=len_states :
     len_states = len(dynamic_symbs) - 1
     K_matrix = np.zeros((len(Vect), len_states))
+
 
     for i, t in enumerate(Vect):
         P_eq = P[i, :].reshape(len_states, len_states)
 
         # evaluating  B_equi at equilibrium point
-        x0 = config.cs_ret[0](t)
-        u0 = config.cs_ret[1](t)
-        equilib_point = np.hstack((x0, u0))
-        values_dict = dict(zip(dynamic_symbs, equilib_point))
+        x0 = cs_ret[0](t)
+        u0 = cs_ret[1](t)
+        operating_point = np.hstack((x0, u0))
 
-        B = B_equi.subs(values_dict)
+        B = B_func(*operating_point)
         # converting B (sympy.Matrix) to numpy.array
         B = np.array(B.tolist()).astype(np.float64)
 
@@ -532,8 +546,11 @@ def generate_gain_matrix(R, B_equi, P, Vect, dynamic_symbs):
 
 
 # converting symbolic state equations to functions
-def sympy_states_to_func(dynamic_symbs, param_list):
+def sympy_states_to_func():
     '''
+    TO Do:
+     - param_list should be None as default !
+
     it converts symbolic state equations to functions
 
     ATTENTION :
@@ -543,31 +560,26 @@ def sympy_states_to_func(dynamic_symbs, param_list):
          numpy functions !
        -it uses fx, gx and parameter_values stored in config.py
         fx and gx are calculated in sys_model.py and stored in 
-        config.fx_expr and config.gx_expr
+        config.fx_expr / config.gx_expr
     ============================================================
 
     INPUTS:
-    - dynamic_symbs : an iterable object containing symbolic 
-      variables : ---> dynami_symbs= [q0, q1, qdot0, qdot1, u] 
-    - param_list :  
+    - it uses result from sys_model stored in cfg.pendata 
 
     OUTPUTS :
     - callable state_func(state, input) 
     '''
-    # making a dictionary of parameters with dynamic_symbs as keys
-    param_dict = dict(param_list)
-
+    dynamic_symbs= cfg.pendata.model.dynamic_symbs
+    fx= cfg.pendata.model.fx
+    gx= cfg.pendata.model.gx
     u = dynamic_symbs[-1]
     num_states = len(dynamic_symbs) - 1
 
     # logging.debug('u : %s', u)
-
-    fx = config.fx_expr
-    gx = config.gx_expr
     # logging.debug('fx_expr: %s', fx)
     # logging.debug('gx_expr: %s', gx)
 
-    xdot_expr = (fx + gx * u).subs(param_dict)
+    xdot_expr = fx + gx * u
     # logging.debug('xdot_exr: %s', xdot_expr)
 
     xdot_func = [
@@ -629,12 +641,15 @@ def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
     #     '----------------------------------------------------------------')
     # n=len(Vect)
     # logging.debug('t: %s \n', t)
-
+    
+    cs_ret= cfg.pendata.trajectory.cs_ret
+    print('t ode_func', t)
     if t > Vect[-1]:
         t = Vect[-1]
 
-    xs = config.cs_ret[0](t)
-    us = config.cs_ret[1](t)
+    xs = cs_ret[0](t)
+    us = cs_ret[1](t)
+
     sys_dim = len(xs)
     if mode == 'Closed_loop':
         k_list = [np.interp(t, Vect, K_matrix[:, i]) for i in range(sys_dim)]
@@ -646,6 +661,7 @@ def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
         # logging.debug('k :%s', k)
         # logging.debug('delta_x: %s', delta_x)
         # logging.debug('delta_u: %s \n', delta_u)
+        
     elif mode == 'Open_loop':
         inputs = us
 
