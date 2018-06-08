@@ -137,7 +137,9 @@ plt.show()
 #axes.plot(vect,xS[:,2]-xCl[:,2],'b')
 #comparing results in a matrix :
 #np.vstack([xS[:, 2] * 180 / pi, xCl[:, 2] * 180 / pi]).T
-'''
+
+
+
 def animate_pendulum(t, states, xS, filename=None):
     fig = plt.figure()
 
@@ -227,9 +229,24 @@ def animate_pendulum(t, states, xS, filename=None):
         anim.save(filename,fps=80, extra_args=['-vcodec', 'libx264']) 
 
 animate_pendulum(vect, xCl, xS, filename="einfachpendel.mp4")
-'''
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+"""
 def draw(xt, image):
 
     x = xt[0]
@@ -288,3 +305,4 @@ A = Animation(
 #A.set_limits(xlim=(xmin - 0.5, xmax + 0.5), ylim=(-0.6,0.6))
 
 A.animate()
+"""

@@ -32,8 +32,8 @@ import symbtools.modeltools as mt
 import symbtools.noncommutativetools as nct
 from scipy.integrate import odeint
 import pytrajectory as pytr
-from pytrajectory import log
-log.console_handler.setLevel(10)
+# from pytrajectory import log
+# log.console_handler.setLevel(10)
 
 #=============================================================
 # My Python modules
@@ -45,7 +45,7 @@ import ipydex
 # Trajectory Optimization
 #=============================================================
 
-ipydex.activate_ips_on_exception()
+# ipydex.activate_ips_on_exception()
 
 
 def trajectory_optimization(ct, max_time, constraints=None):
@@ -65,7 +65,7 @@ def trajectory_optimization(ct, max_time, constraints=None):
                   for i in range(len(q) - 1)] + [0.0 for i in range(len(q))]
     xb = [0.0 for i in range(2 * len(q))]
 
-    ipydex.IPS()
+    # ipydex.IPS()
 
     ua = [0.0]
     ub = [0.0]
@@ -116,4 +116,4 @@ def trajectory_optimization(ct, max_time, constraints=None):
     with open('xs.pkl', 'wb') as file:
         dill.dump(config.cs_ret[0], file)
     '''
-    ipydex.IPS()
+    # ipydex.IPS()

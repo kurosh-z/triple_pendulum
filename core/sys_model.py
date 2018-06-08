@@ -93,7 +93,7 @@ def system_model_generator(ct):
     for i in range(n):
         #Creating new reference frame
         Li = In_frame.orientnew('L' + str(i), 'Axis',
-                                [sm.pi / 3 - q[i + 1], In_frame.z])
+                                [sm.pi / 2 - q[i + 1], In_frame.z])
         Li.set_ang_vel(In_frame, -qdot[i + 1] * In_frame.z)
         frames.append(Li)
 
@@ -174,8 +174,10 @@ def system_model_generator(ct):
     ct.model.d = d
     ct.model.g = g
     ct.model.t = t
+    ct.model.param_dict= param_dict
     ct.model.frames = frames
     ct.model.mass_centers = mass_centers
+    ct.model.origin_point= O
     ct.model.joint_centers = joint_centers
     ct.model.central_inertias = central_inertias
     ct.model.rigid_bodies = rigid_bodies
@@ -191,6 +193,7 @@ def system_model_generator(ct):
     ct.model.forcing_vector_simplified = forcing_vector_simplified
     ct.model.fx = fx
     ct.model.gx = gx
+
     '''
     
     # storing system model as binary file to be used later

@@ -32,7 +32,7 @@ from scipy.integrate import odeint
 
 # from odeintw import odeintw
 
-import ipydex
+# import ipydex
 #=============================================================
 # Standard Python modules
 #=============================================================
@@ -55,7 +55,7 @@ import cfg
 # logger.addHandler(handler)
 # logger.setLevel(logging.DEBUG)
 
-ipydex.activate_ips_on_exception()
+# ipydex.activate_ips_on_exception()
 
 def tracking_control(ct):
     '''
@@ -140,8 +140,8 @@ def tracking_control(ct):
     elif number_of_pendulums== 3 :
         with open('P_matrix_triple.pkl', 'rb') as file:
             P = dill.load(file)   
-    '''
     
+    '''
     
     # finding gain k for Tracking :
     
@@ -150,7 +150,7 @@ def tracking_control(ct):
     K_matrix = generate_gain_matrix(R, B_func, Psim, tvec, dynamic_symbs)
     print('gain matrix is ready!')
 
-    ipydex.IPS()
+    # ipydex.IPS()
 
     # finding states of the system using calculated K_matrix and
     # comparing the results with desired trajecory !
@@ -163,8 +163,9 @@ def tracking_control(ct):
     
     # returning the results :
     ct.tracking.x_closed_loop= x_closed_loop
-    ct.tracking.P_matrix= P_matrix
-    ct.tracking.gain_matrix= gain_matrix
+    ct.tracking.tvec= tvec
+    ct.tracking.P_matrix= P
+    ct.tracking.gain_matrix= K_matrix
     
     '''
     xs = np.array([cs_ret[0](time).tolist() for time in tvec])
@@ -181,4 +182,4 @@ def tracking_control(ct):
 
     '''
 
-    ipydex.IPS()
+    # ipydex.IPS()
