@@ -173,7 +173,6 @@ def system_model_generator(ct):
     ct.model.a = a
     ct.model.d = d
     ct.model.g = g
-    ct.model.t = t
     ct.model.param_dict= param_dict
     ct.model.frames = frames
     ct.model.mass_centers = mass_centers

@@ -38,6 +38,7 @@ from scipy.integrate import odeint
 #=============================================================
 from functions import *
 import cfg
+
 #=============================================================
 # Lqr control for top equilibrium point
 #=============================================================
@@ -57,6 +58,7 @@ import cfg
 
 # ipydex.activate_ips_on_exception()
 
+
 def tracking_control(ct):
     '''
     
@@ -69,29 +71,28 @@ def tracking_control(ct):
 
     '''
     # fiding symbols we need
-    dynamic_symbs= ct.model.dynamic_symbs
-    q= ct.model.q
-    u= ct.model.q
-    fx= ct.model.fx
-    gx= ct.model.gx
-    max_time= ct.trajectory.max_time
-    number_of_pendulums= ct.number_of_pendulums
-    cs_ret= ct.trajectory.cs_ret
-    xa=ct.trajectory.xa
+    dynamic_symbs = ct.model.dynamic_symbs
+    q = ct.model.q
+    u = ct.model.q
+    fx = ct.model.fx
+    gx = ct.model.gx
+    max_time = ct.trajectory.max_time
+    number_of_pendulums = ct.number_of_pendulums
+    cs_ret = ct.trajectory.cs_ret
+    xa = ct.trajectory.xa
+    label = ct.label
 
     # defining equilibrium point for system linearization at top
-    x0=[ 0.0 for i in range(2*len(q))]
+    x0 = [0.0 for i in range(2 * len(q))]
     u0 = [0.0]
     equilibrium_point = x0 + u0
-    
-    
+
     # linearization of model @ equilibrium point
-    A, B = linearize_state_equ(fx, gx,dynamic_symbs, equilibrium_point)
+    A, B = linearize_state_equ(fx, gx, dynamic_symbs, equilibrium_point)
     print('linearized model is ready !')
-    
-    
+
     # lqr control to find K (we need it as a boundry-value (Pe) for our tracking !)
-    Q = np.identity(2*len(q))
+    Q = np.identity(2 * len(q))
     R = 0.01 * np.identity(1)
 
     # k_top = lqr(A, B, Q, R)
@@ -99,22 +100,25 @@ def tracking_control(ct):
     k_top = results[0]
 
     # reshape P matrix and use it as initial guess for P
-    Pe = results[1].reshape((2*len(q))**2)
-    
+    Pe = results[1].reshape((2 * len(q))**2)
+
     # finding linearized model as a function of equilibrium point
-    A_func, B_func = linearize_state_equ(fx, gx, dynamic_symbs, output_mode= 'sympy_func')
-    
-    
+    A_func, B_func = linearize_state_equ(
+        fx, gx, dynamic_symbs, output_mode='sympy_func')
+
     # solving riccati differential equations inverse in time :
     frames_per_sec = 120
     final_time = max_time
     tvec = np.linspace(0.0, final_time, final_time * frames_per_sec)
-    
-    print('Integrating riccati differential equations to find P matrix :') 
+
+    print('Integrating riccati differential equations to find P matrix :')
 
     P = odeint(
-        riccati_diff_equ, Pe, tvec[::-1], args=(A_func, B_func, Q, R, dynamic_symbs))
-    
+        riccati_diff_equ,
+        Pe,
+        tvec[::-1],
+        args=(A_func, B_func, Q, R, dynamic_symbs))
+
     if number_of_pendulums == 1:
         with open('P_matrix.pkl', 'wb') as file:
             dill.dump(P, file)
@@ -126,8 +130,6 @@ def tracking_control(ct):
     elif number_of_pendulums == 3:
         with open('P_matrix_triple.pkl', 'wb') as file:
             dill.dump(P, file)
-    
-    
     '''
     if number_of_pendulums == 1 :
         with open('P_matrix.pkl', 'rb') as file:
@@ -142,31 +144,40 @@ def tracking_control(ct):
             P = dill.load(file)   
     
     '''
-    
+
     # finding gain k for Tracking :
-    
+
     print('generating gain_matrix using P')
     Psim = P[::-1]
     K_matrix = generate_gain_matrix(R, B_func, Psim, tvec, dynamic_symbs)
     print('gain matrix is ready!')
 
-    # ipydex.IPS()
+    # saving K_matrix in a numpy file
+    np.save('K_matrix' + '_' + label + 'max_time_' + str(max_time) + '.npy',
+            K_matrix)
+
+    ipydex.IPS()
 
     # finding states of the system using calculated K_matrix and
     # comparing the results with desired trajecory !
     xdot_func = sympy_states_to_func()
-    
+
     print('integrating to find x_closed_loop')
-    
-    x_closed_loop = odeint(ode_function, xa, tvec, args=(xdot_func, K_matrix, tvec))
+
+    x_closed_loop = odeint(
+        ode_function, xa, tvec, args=(xdot_func, K_matrix, tvec))
     # x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
-    
+
+    # saving x_closed_loop in a numpy file
+    np.save(
+        'X_closed_loop' + '_' + label + 'max_time_' + str(max_time) + '.npy',
+        x_closed_loop)
+
     # returning the results :
-    ct.tracking.x_closed_loop= x_closed_loop
-    ct.tracking.tvec= tvec
-    ct.tracking.P_matrix= P
-    ct.tracking.gain_matrix= K_matrix
-    
+    ct.tracking.x_closed_loop = x_closed_loop
+    ct.tracking.tvec = tvec
+    ct.tracking.P_matrix = P
+    ct.tracking.gain_matrix = K_matrix
     '''
     xs = np.array([cs_ret[0](time).tolist() for time in tvec])
     
@@ -182,4 +193,4 @@ def tracking_control(ct):
 
     '''
 
-    # ipydex.IPS()
+    ipydex.IPS()

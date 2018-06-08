@@ -35,21 +35,30 @@ from pydy_viz import visualization
 #=============================================================
 # main  :
 #=============================================================
+number_of_pendulums = 3
+mode='simulation'
 
-# initializing the container to pass to the functions 
-#  as global variable :
-Pen_Container_initializer(1)
+if mode == 'load':
+    Pen_Container_initializer(number_of_pendulums)
+    # modeling the system with kanes' Method
+    system_model_generator(cfg.pendata)
+    # visualizing the  results from pas simulations  :
+    visualization(cfg.pendata, mode=mode)
+    
+else :
+    # initializing the container 
+    Pen_Container_initializer(number_of_pendulums)
 
-# modeling the system with kanes' Method
-system_model_generator(cfg.pendata)
+    # modeling the system with kanes' Method
+    system_model_generator(cfg.pendata)
 
-# generating trajectory with pytrajectory
-max_time= 2
-trajectory_optimization(cfg.pendata, max_time)
+    # generating trajectory with pytrajectory
+    max_time= 2
+    trajectory_optimization(cfg.pendata, max_time)
 
-# tracking control of the time varying linear system
-tracking_control(cfg.pendata)
+    # tracking control of the time varying linear system
+    tracking_control(cfg.pendata)
 
-# visualizing the results :
-visualization(cfg.pendata)
+    # visualizing the results :
+    visualization(cfg.pendata, mode='simulation')
 

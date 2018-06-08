@@ -1,0 +1,111 @@
+#container input[type=text]{
+	padding:6px;font-size:18px; 
+	border:2px solid #ccc;
+	background: white;
+	padding: 5px;
+	width:280px;
+	margin-bottom: 10px;
+	border-radius: 4px;
+	-webkit-transition: 0.5s ease-in-out all;
+	-moz-transition: 0.5s ease-in-out all;
+	-ms-transition: 0.5s ease-in-out all;
+	-o-transition: 0.5s ease-in-out all;
+	transition: 0.5s ease-in-out all;
+}
+
+#container input[type=text]:focus{
+	border-color:white;
+	-moz-box-shadow: 0px 0px 14px #dfdfdf;
+	-webkit-box-shadow: 0px 0px 14px #dfdfdf;
+	box-shadow: 0px 0px 14px #dfdfdf;
+}
+
+#container #wrapper{
+	min-height:100px;
+}
+
+#container #slider-wrapper{
+  display: inline-block;
+}
+
+#container #checkbox-play-looped{
+  margin-top: 10px;
+  margin-left: 5px;
+  margin-right: 5px;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+#container #container {
+	margin: 2em;
+}
+
+#container #control-button-group {
+  width: 71%;
+}
+
+#container canvas {
+  float: left;
+	margin-top: 10px;
+	margin-left: 10px;
+}
+
+#container #sidebar-right {
+	float:right;
+	display:block;
+	width:28%;
+}
+
+#container #json-input{
+	min-height:2em;
+  width: 100%;
+}
+
+#container .btn{
+	margin:0.1em;
+}
+
+#container #log-container {
+
+	margin:1.5em;
+	max-height: 10em;
+	overflow: overlay;
+}
+
+#container #objectDialog{
+	min-height: 15em;
+}
+
+/* Overriding bootstrap button radius */
+#container #play-animation{
+	border-radius: 0.5em;
+	margin-right: 0.5em;
+}
+
+#container #pause-animation{
+	border-radius: 0.5em;
+	margin-right: 0.5em;
+}
+
+#container #stop-animation{
+	border-radius: 0.5em;
+	margin-right: 0.5em;
+}
+
+#container #close-object-dialog{
+	border-radius: 0.5em;
+	margin-left:0.5em;
+}
+
+#container #show-model{
+	border-radius: 0.5em;
+	margin-left:0.5em;
+}
+
+#container ul {
+  list-style-type: none;
+}
+
+#container .form-control{
+	margin-bottom: 13px;
+}

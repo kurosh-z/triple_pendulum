@@ -36,13 +36,18 @@ import ipydex
 #=============================================================
 
 
-def visualization(ct, filename=None):
+def visualization(ct, mode, filename=None):
     '''
     animating the resulsts 
 
     '''
+    label= ct.label
+    if mode == 'load':
+        states= np.load('X_closed_loop' + '_' + label + '.npy')
+    else:
+        states = ct.tracking.x_closed_loop
+    
     num_pen = ct.number_of_pendulums
-    states = ct.tracking.x_closed_loop
     param_dict = ct.model.param_dict
     dynamic_symbs = ct.model.dynamic_symbs
     joint_centers = ct.model.joint_centers
@@ -56,18 +61,18 @@ def visualization(ct, filename=None):
     cart_shape = Cube(color='red', length=0.1)
     cart_viz_frame = VisualizationFrame(In_frame, mass_centers[0], cart_shape)
 
-    links_centers = []
-    links_shapes = []
+    # links_centers = []
+    # links_shapes = []
     links_viz_frames = []
-    joint_shapes = []
+    # joint_shapes = []
     joint_viz_frames = []
 
     # definig geometric centers and frames for links
     for i in range(num_pen):
         #defining geometric centers
         LCi = me.Point('LC' + str(i))
-        LCi.set_pos(joint_centers[i], l[i] / 2 * frames[i + 1].x)
-        links_centers.append(LCi)
+        LCi.set_pos(joint_centers[i], (l[i] / 2 + 0.025) * frames[i + 1].x)
+        # links_centers.append(LCi)
 
         # reference frames for links
         Bi = me.ReferenceFrame('B' + str(i))
@@ -75,12 +80,19 @@ def visualization(ct, filename=None):
 
         # definging shapes for joints
         joint_shapei = Sphere(color='black', radius=0.05)
-        joint_shapes.append(joint_shapei)
+        # joint_shapes.append(joint_shapei)
 
         # definging shapes for links
+        if i == 0 :
+            color='blue'
+        elif i == 1 :
+            color='green'
+        elif i == 2 :
+            color == 'red'   
+
         links_shapei = Cylinder(
-            radius=0.08, length=param_dict[l[i]], color='blue')
-        links_shapes.append(links_shapei)
+            radius=0.08, length=param_dict[l[i]], color= color)
+        # links_shapes.append(links_shapei)
 
         # joint visualization frames
         joint_viz_framei = VisualizationFrame(In_frame, joint_centers[i],
@@ -94,14 +106,12 @@ def visualization(ct, filename=None):
 
     # defining Scenes
     scene = Scene(In_frame, origin)
-    ipydex.IPS()
 
     scene.visualization_frames = [cart_viz_frame
                                   ] + joint_viz_frames + links_viz_frames
-    scene.states_symbols = dynamic_symbs[0:4]
+    scene.states_symbols = dynamic_symbs[0:len(dynamic_symbs)-1]
     scene.constants = param_dict
     scene.states_trajectories = states
 
     scene.display()
 
-    # ipydex.IPS()

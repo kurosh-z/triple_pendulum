@@ -107,11 +107,22 @@ def trajectory_optimization(ct, max_time, constraints=None):
     if control_sys.reached_accuracy:
         print("Pytrajecotry Succeeded!")
 
+    # saving the results as numpy
+    time_vec = np.linspace(0, max_time, 1000)
+    x_traj = [cs_ret[0](t) for t in time_vec]
+    u_traj = [[cs_ret[1](t) for t in time_vec]]
+
+    label = ct.label
+    np.save('x_traj' + '_' + label + 'max_time_' + str(max_time) + '.npy',
+            x_traj)
+    np.save('u_traj' + '_' + label + 'max_time_' + str(max_time) + '.npy',
+            u_traj)
+
     ct.trajectory.cs_ret = cs_ret
     ct.trajectory.pytraj_rhs = pytraj_rhs
-    ct.trajectory.max_time= max_time
-    ct.trajectory.xa= xa
-    ct.trajectory.xb= xb
+    ct.trajectory.max_time = max_time
+    ct.trajectory.xa = xa
+    ct.trajectory.xb = xb
     '''
     with open('xs.pkl', 'wb') as file:
         dill.dump(config.cs_ret[0], file)
