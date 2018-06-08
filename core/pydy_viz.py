@@ -36,14 +36,15 @@ import ipydex
 #=============================================================
 
 
-def visualization(ct, mode, filename=None):
+def visualization(ct, mode,max_time=None, filename=None):
     '''
     animating the resulsts 
 
     '''
     label= ct.label
+    
     if mode == 'load':
-        states= np.load('X_closed_loop' + '_' + label + '.npy')
+        states= np.load('x_traj' + '_' + label + 'max_time_' + str(max_time) + '.npy')
     else:
         states = ct.tracking.x_closed_loop
     

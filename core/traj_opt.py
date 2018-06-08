@@ -32,8 +32,8 @@ import symbtools.modeltools as mt
 import symbtools.noncommutativetools as nct
 from scipy.integrate import odeint
 import pytrajectory as pytr
-# from pytrajectory import log
-# log.console_handler.setLevel(10)
+from pytrajectory import log
+log.console_handler.setLevel(10)
 
 #=============================================================
 # My Python modules
@@ -82,7 +82,7 @@ def trajectory_optimization(ct, max_time, constraints=None):
              "show_ir":  False,  # optionale grafische Anzeige von Zwischenergebnissen
              "use_std_approach": False,  # alte (unübliche Stützpunktdef.)
              "use_chains": False,  # Ausnutzung von Integratorketten deakt.
-             "eps": 0.05,  # größere Fehlertoleranz (Endzustand)
+             "eps": 0.07,  # größere Fehlertoleranz (Endzustand)
              "ierr": None,  # Intervallfehler ignorieren
          }
     else:

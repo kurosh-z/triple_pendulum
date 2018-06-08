@@ -104,7 +104,7 @@ def tracking_control(ct):
 
     # finding linearized model as a function of equilibrium point
     A_func, B_func = linearize_state_equ(
-        fx, gx, dynamic_symbs, output_mode='sympy_func')
+        fx, gx, dynamic_symbs, output_mode='numpy_func')
 
     # solving riccati differential equations inverse in time :
     frames_per_sec = 120

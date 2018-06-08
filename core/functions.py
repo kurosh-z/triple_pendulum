@@ -316,8 +316,8 @@ def linearize_state_equ(fx,
     ===========================================================
      OUTPUTS:
      - By default "numpy_array" A , B
-     - if output_mode = "sympy_func"
-       it returns A , B  as sympy functions of operating point 
+     - if output_mode = "numpy_func"
+       it returns A , B  as numpy functions of operating point 
      
     '''
     # finding q , qdot and u
@@ -346,13 +346,13 @@ def linearize_state_equ(fx,
         print('A_numpy')
         ret = A_numpy, B_numpy
 
-    elif output_mode == 'sympy_func':
+    elif output_mode == 'numpy_func':
         
         A = df_dxx + dg_dxx * u
         B = gx
-        A_func = sm.lambdify(dynamics_symbs, A, 'sympy')
-        B_func = sm.lambdify(dynamics_symbs, B, 'sympy')
-        print('A_func ')
+        A_func = sm.lambdify(dynamics_symbs, A, 'numpy')
+        B_func = sm.lambdify(dynamics_symbs, B, 'numpy')
+        
         ret= A_func, B_func
 
 
