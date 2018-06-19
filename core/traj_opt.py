@@ -50,7 +50,7 @@ import ipydex
 
 def trajectory_optimization(ct, max_time, constraints=None):
     '''
-    finding the trajectory
+    finding the trajectory using pytrajectory
     '''
     q = ct.model.q
     fx = ct.model.fx

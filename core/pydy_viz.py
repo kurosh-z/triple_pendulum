@@ -41,10 +41,14 @@ def visualization(ct, mode,max_time=None, filename=None):
     animating the resulsts 
 
     '''
+    print('\n \n')
+    print('======================== Pydy Visualization ========================')
+
     label= ct.label
     
     if mode == 'load':
-        states= np.load('x_traj' + '_' + label + 'max_time_' + str(max_time) + '.npy')
+        
+        states= np.load('x_closed_loop' + '_' + label + '_max_time_' + str(max_time) + '.npy')
     else:
         states = ct.tracking.x_closed_loop
     
@@ -82,14 +86,14 @@ def visualization(ct, mode,max_time=None, filename=None):
         # definging shapes for joints
         joint_shapei = Sphere(color='black', radius=0.05)
         # joint_shapes.append(joint_shapei)
-
+        
         # definging shapes for links
         if i == 0 :
-            color='blue'
+         color='blue'
         elif i == 1 :
-            color='green'
+         color='green'
         elif i == 2 :
-            color == 'red'   
+         color == 'black'   
 
         links_shapei = Cylinder(
             radius=0.08, length=param_dict[l[i]], color= color)

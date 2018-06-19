@@ -12,7 +12,8 @@ To Do :
 #=============================================================
 # Standard Python modules
 #=============================================================
-import os, sys
+import os
+import sys
 import dill
 # import logging
 
@@ -110,8 +111,11 @@ def tracking_control(ct):
     frames_per_sec = 120
     final_time = max_time
     tvec = np.linspace(0.0, final_time, final_time * frames_per_sec)
-
+    
+    print('\n \n')
+    print('========================Riccati differential equations========================')
     print('Integrating riccati differential equations to find P matrix :')
+    print('==============================================================================')
 
     P = odeint(
         riccati_diff_equ,
@@ -146,7 +150,8 @@ def tracking_control(ct):
     '''
 
     # finding gain k for Tracking :
-
+    print('\n \n')
+    print('======================== gain matrix ========================')
     print('generating gain_matrix using P')
     Psim = P[::-1]
     K_matrix = generate_gain_matrix(R, B_func, Psim, tvec, dynamic_symbs)
@@ -156,12 +161,13 @@ def tracking_control(ct):
     np.save('K_matrix' + '_' + label + 'max_time_' + str(max_time) + '.npy',
             K_matrix)
 
-    ipydex.IPS()
+    # ipydex.IPS()
 
     # finding states of the system using calculated K_matrix and
     # comparing the results with desired trajecory !
     xdot_func = sympy_states_to_func()
-
+    print('\n \n')
+    print('======================== x_closed_loop ========================')
     print('integrating to find x_closed_loop')
 
     x_closed_loop = odeint(
@@ -169,16 +175,15 @@ def tracking_control(ct):
     # x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
 
     # saving x_closed_loop in a numpy file
-    np.save(
-        'X_closed_loop' + '_' + label + 'max_time_' + str(max_time) + '.npy',
-        x_closed_loop)
+    np.save('x_closded_loop' + '_' + label + '_max_time_' + str(max_time) + '.npy',
+            x_closed_loop)
 
     # returning the results :
     ct.tracking.x_closed_loop = x_closed_loop
     ct.tracking.tvec = tvec
     ct.tracking.P_matrix = P
     ct.tracking.gain_matrix = K_matrix
-    '''
+
     xs = np.array([cs_ret[0](time).tolist() for time in tvec])
     
     import matplotlib as mpl
@@ -191,6 +196,5 @@ def tracking_control(ct):
     
     plt.show()
 
-    '''
 
     ipydex.IPS()

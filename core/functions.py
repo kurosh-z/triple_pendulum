@@ -53,6 +53,45 @@ import ipydex
 #=============================================================
 
 
+def jac_func(ct):
+    ''' returns jacobinan function of fxu for DRICON
+    '''
+    q = ct.model.q
+    qdot = ct.model.qdot
+    u = ct.model.u
+    fx = ct.model.fx
+    gx = ct.model.gx
+
+    xx = sm.Matrix([q+qdot+[u]])
+    # we just need qdds so:
+    fxu = sm.Matrix((fx + gx * u))
+    jac = fxu.jacobian(xx)
+    
+    # to avoid lambdify's bug we need to lambdify every single component
+    jac_funcs = [
+        sm.lambdify(xx, jac[i, j], 'numpy') for i in range(2*len(q))
+        for j in range(2*len(q)+1)
+    ]
+
+    def jac_func(x, u):
+        ''' returns numpy array of jacobian evaluated at x and u
+            Inputs :x and u should be given as numpy array
+        '''
+        n=int(len(x))
+        xx=np.array( x.tolist() + u.tolist())
+        jac= np.array([jac_funcs[i](*xx) for i in range(n*(n+1))]).reshape(n, n+1)
+
+        return jac
+
+    return jac_func
+
+                
+    
+
+    
+
+
+
 def generate_state_equ_new(mass_matrix, forcing_vector, qdot, qdd, u):
     '''
     given mass_matrix and forcing_vector of a Kane's Method it
@@ -292,6 +331,7 @@ def linearize_state_equ(fx,
                         operation_point=None,
                         output_mode='numpy_array'):
     '''
+    TODO: solve potential promblem with lambdify if the results are null
 
     generate Linearzied form of state Equations at a given 
     equilibrium point.
@@ -321,11 +361,11 @@ def linearize_state_equ(fx,
      
     '''
     # finding q , qdot and u
-    u= dynamics_symbs[-1]
-    len_q= int((len(dynamics_symbs)-1) / 2)
-    q=dynamics_symbs[0:len_q]
-    qdot=dynamics_symbs[len_q:2*len_q]
-    
+    u = dynamics_symbs[-1]
+    len_q = int((len(dynamics_symbs) - 1) / 2)
+    q = dynamics_symbs[0:len_q]
+    qdot = dynamics_symbs[len_q:2 * len_q]
+
     # calculating jacobians
     xx = sm.Matrix.vstack(sm.Matrix(q), sm.Matrix(qdot))
     df_dxx = fx.jacobian(xx)
@@ -347,14 +387,13 @@ def linearize_state_equ(fx,
         ret = A_numpy, B_numpy
 
     elif output_mode == 'numpy_func':
-        
+
         A = df_dxx + dg_dxx * u
         B = gx
         A_func = sm.lambdify(dynamics_symbs, A, 'numpy')
         B_func = sm.lambdify(dynamics_symbs, B, 'numpy')
-        
-        ret= A_func, B_func
 
+        ret = A_func, B_func
 
     return ret
 
@@ -386,11 +425,11 @@ def convert_qdd_to_func(fx, gx, dynamic_symbs, param_dict=None):
     output is a list containing [qdd0, qdd1, qdd2, ... ]
 
     '''
-    u= dynamic_symbs[-1]
-    len_q= int((len(dynamic_symbs)-1) / 2)
+    u = dynamic_symbs[-1]
+    len_q = int((len(dynamic_symbs) - 1) / 2)
 
     qdd_expr = fx + gx * u
-    
+
     #substituting parameters in qdd_expr
     if isinstance(param_dict, dict):
         qdd_expr = qdd_expr.subs(param_dict)
@@ -415,7 +454,7 @@ def pytraj_rhs(x, u, uref=None, t=None, pp=None):
     '''
     qq = x
     u0, = u
-    qdd_functions= cfg.pendata.trajectory.qdd_functions
+    qdd_functions = cfg.pendata.trajectory.qdd_functions
 
     #frist defining xd[0 to len(q)] as qdots / ATTENTION: len(qq) = 2*len(q)
     q_len = int(len(qq) / 2)
@@ -427,11 +466,11 @@ def pytraj_rhs(x, u, uref=None, t=None, pp=None):
         if len(qq) == 4:
             xd.append(qdd_functions[i](qq[0], qq[1], qq[2], qq[3], u0))
         elif len(qq) == 6:
-            xd.append(qdd_functions[i](qq[0], qq[1], qq[2], qq[3],
-                                              qq[4], qq[5], u0))
+            xd.append(qdd_functions[i](qq[0], qq[1], qq[2], qq[3], qq[4],
+                                       qq[5], u0))
         elif len(qq) == 8:
-            xd.append(qdd_functions[i](qq[0], qq[1], qq[2], qq[3],
-                                              qq[4], qq[5], qq[6], qq[7], u0))
+            xd.append(qdd_functions[i](qq[0], qq[1], qq[2], qq[3], qq[4],
+                                       qq[5], qq[6], qq[7], u0))
 
     ret = np.array(xd)
 
@@ -480,8 +519,7 @@ def riccati_diff_equ(P, t, A_func, B_func, Q, R, dynamic_symbs):
     # outside of the our t=(0, end_time)
     print('riccati t: ', t)
     len_q = int((len(dynamic_symbs) - 1) / 2)
-    cs_ret= cfg.pendata.trajectory.cs_ret
-
+    cs_ret = cfg.pendata.trajectory.cs_ret
 
     if t < 0:
         x0 = [0] + [np.pi
@@ -521,11 +559,10 @@ def generate_gain_matrix(R, B_func, P, Vect, dynamic_symbs):
      -->  num_rows= len(Vect), num_columns= len(states)
                  
     '''
-    cs_ret= cfg.pendata.trajectory.cs_ret
+    cs_ret = cfg.pendata.trajectory.cs_ret
     # K_matrix is a m*n matrix with m=len(Vect) and n=len_states :
     len_states = len(dynamic_symbs) - 1
     K_matrix = np.zeros((len(Vect), len_states))
-
 
     for i, t in enumerate(Vect):
         P_eq = P[i, :].reshape(len_states, len_states)
@@ -547,11 +584,7 @@ def generate_gain_matrix(R, B_func, P, Vect, dynamic_symbs):
 
 # converting symbolic state equations to functions
 def sympy_states_to_func():
-    '''
-    TO Do:
-     - param_list should be None as default !
-
-    it converts symbolic state equations to functions
+    '''it converts symbolic state equations to functions
 
     ATTENTION :
        - the difference between this and qdd_to_func is
@@ -560,18 +593,18 @@ def sympy_states_to_func():
          numpy functions !
        -it uses fx, gx and parameter_values stored in config.py
         fx and gx are calculated in sys_model.py and stored in 
-        config.fx_expr / config.gx_expr
+        Pen_Container
     ============================================================
 
     INPUTS:
-    - it uses result from sys_model stored in cfg.pendata 
+    - cfg.pendata 
 
     OUTPUTS :
     - callable state_func(state, input) 
     '''
-    dynamic_symbs= cfg.pendata.model.dynamic_symbs
-    fx= cfg.pendata.model.fx
-    gx= cfg.pendata.model.gx
+    dynamic_symbs = cfg.pendata.model.dynamic_symbs
+    fx = cfg.pendata.model.fx
+    gx = cfg.pendata.model.gx
     u = dynamic_symbs[-1]
     num_states = len(dynamic_symbs) - 1
 
@@ -589,7 +622,7 @@ def sympy_states_to_func():
 
     def state_func(state, inputs):
         '''
-        given state and inputs it return x_dot
+        given state and inputs it returns x_dot
         '''
         u, = inputs
         x = state
@@ -641,8 +674,8 @@ def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
     #     '----------------------------------------------------------------')
     # n=len(Vect)
     # logging.debug('t: %s \n', t)
-    
-    cs_ret= cfg.pendata.trajectory.cs_ret
+
+    cs_ret = cfg.pendata.trajectory.cs_ret
     print('t ode_func', t)
     if t > Vect[-1]:
         t = Vect[-1]
@@ -661,7 +694,7 @@ def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
         # logging.debug('k :%s', k)
         # logging.debug('delta_x: %s', delta_x)
         # logging.debug('delta_u: %s \n', delta_u)
-        
+
     elif mode == 'Open_loop':
         inputs = us
 
@@ -677,3 +710,98 @@ def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
     # logging.debug('xdot : %s ', xdot)
 
     return xdot
+
+
+def generate_position_vector_func(In_frame, origin, point, dynamic_variables):
+    ''' retuns the position of the point on reference_frame
+     in inertial reference frame (In_frame) as a fucntion
+     of dynamic_variables 
+     '''
+    # finding the vector of point  in respect to In_frame
+    point_vector = point.pos_from(origin)
+    point_vector_x = point_vector.dot(In_frame.x)
+    point_vector_y = point_vector.dot(In_frame.y)
+
+    # substituting dummy variables instead of dynamic_variables
+    # couse there are funcitons of times and they couldn't be unpacked
+    # like a normal sm.symbols as args for the funtions
+    dummy_symbols = [sm.Dummy() for i in dynamic_variables]
+    dummy_dict = dict(zip(dynamic_variables, dummy_symbols))
+
+    point_vector_dummy = [
+        point_vector_x.subs(dummy_dict),
+        point_vector_y.subs(dummy_dict)
+    ]
+
+    # lamdify the point vector
+    point_vector_func = [
+        sm.lambdify(dummy_symbols, point_vector_component, modules='numpy')
+        for point_vector_component in point_vector_dummy
+    ]
+    return point_vector_func
+
+
+def generate_transformation_matrix_2d(In_frame, origin, reference_frame,
+                                      point):
+    '''shamplessly modified version of pydy's 3D transfromation !
+    Generate a symbolic 2D transformation matrix, with respect to the 
+    reference frame and point.
+    
+    INPUTS:
+     - In_frame : Inertial reference frame
+     - reference_frame : A frame with respect to whicht transformation matrix 
+       is generated
+     - Point : A point with respect to which transformation is generated   
+    '''
+    rotation_matrix = In_frame.dcm(reference_frame)
+    rotation_matrix_2d = sm.Matrix(
+        [rotation_matrix[i, j] for i in range(2) for j in range(2)]).reshape(
+            2, 2)
+    trans_matrix = sm.Identity(3).as_mutable()
+    trans_matrix[:2, :2] = rotation_matrix_2d
+
+    # defining the vector from origin to the point
+    point_vector = origin.pos_from(point)
+
+    # calculating translation part of Transformation Matrix
+    trans_matrix[2, 0] = point_vector.dot(reference_frame.x)
+    trans_matrix[2, 1] = point_vector.dot(reference_frame.y)
+    return trans_matrix
+
+
+def generate_transformation_matrix_func(trans_matrix, dynamic_variables):
+    ''' returns a a list of functions which computes the numerical values of 
+    the transformation_matrix_2d
+    
+    '''
+    dummy_symbols = [sm.Dummy() for i in dynamic_variables]
+    dummy_dict = dict(zip(dynamic_variables, dummy_symbols))
+
+    # reshaping the matrix to use lambdify --> reshape because
+    # lambdify returns null instead of null vector or matrxi !
+    transfrom = trans_matrix.subs(dummy_dict).reshape(9, 1)
+    trans_funcs = []
+    for i in range(9):
+        trans = trans_matrix[i]
+        func = sm.lambdify(dummy_symbols, trans, modules='numpy')
+        trans_funcs.append(func)
+    return trans_funcs
+
+
+
+    def array_compare(a,b, tol=1e-6):
+        '''difference between two np.arrays a and b
+       
+       - Default tol is 1e-6
+       ===========
+       - Returns :
+                a tupel consist of differnece array 
+                and maximal difference
+    '''
+    func1= lambda x: x if abs(x) >= tol else  0
+    func2= lambda x, y: np.array([func1(xi-yi) for xi,yi in zip(x,y) ]) 
+    delta= np.array([func2(xs1,xs2) for xs1, xs2 in zip(a, b) ])
+    max_diff= np.amax(np.array([func1(deltai) for deltai in delta]))
+        
+    
+    return delta, max_diff

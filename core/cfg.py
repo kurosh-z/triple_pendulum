@@ -84,11 +84,20 @@ def Pen_Container_initializer(number_of_pendulums):
     elif number_of_pendulums == 3 :
         label = 'triple'
 
-    # defining our data structure 
+    # defining our data structure : 
+
     pendata = Pen_Container('Inverted' + '_' + label +'_' +'Pnedelum')
     pendata.parameter_values= parameter_values_dict[label]
     pendata.model = Pen_Container('model')
+
+    # trajectory :
     pendata.trajectory= Pen_Container('Trajecory')
+    pendata.trajectory.k= None
+    # pendata.trajectory.n=[]
+    # pendata.trajectory.max_time
+    # pendata.trajectory.fxu=lambda x, u: print('you have to define fxu !')
+    
+    # tracking
     pendata.tracking= Pen_Container('tracking')
     pendata.number_of_pendulums= number_of_pendulums
     print('somebody called me !')

@@ -5,8 +5,8 @@ from scipy.integrate import odeint
 from odeintw import odeintw
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from matplotlib.patches import Rectangle, Circle
-# from matplotlib import animation
+from matplotlib.patches import Rectangle, Circle  
+from matplotlib import animation
 from visualisation22 import Animation
 
 #from Visualization.visualisation import Animation
