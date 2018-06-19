@@ -1,4 +1,4 @@
 {
     "python.formatting.provider": "yapf",
-    "python.pythonPath": "/home/kurosh/anaconda3/envs/py2env/bin/python"
+    "python.pythonPath": "/home/kurosh/anaconda3/bin/python"
 }

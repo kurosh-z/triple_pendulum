@@ -1,0 +1,8 @@
+tmax=2.5
+pytrajectory's "eps": 0.06 
+and with 0.07 process killed !
+
+
+
+results : crashed with 1280 splines
+

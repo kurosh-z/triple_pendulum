@@ -65,9 +65,9 @@ else:
     trajectory_generator(cfg.pendata, max_time)
 
     # tracking control of the time varying linear system
-    # tracking_control(cfg.pendata)
+    tracking_control(cfg.pendata)
 
     # visualizing the results :
-    # visualization(cfg.pendata, mode='simulation', max_time=max_time)
+    visualization(cfg.pendata, mode='simulation', max_time=max_time)
     # pen_animation(cfg.pendata, filename='test')
 

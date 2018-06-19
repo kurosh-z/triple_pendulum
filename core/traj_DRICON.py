@@ -174,8 +174,8 @@ def trajectory_generator(ct, max_time):
     boundry_uf = {'type': 'eq', 'fun': lambda z: z[-1] - np.array(uf)}
 
     # all constrainsts together
-    cons = (collocation_cons, boundry_x0, boundry_u0, boundry_xf, boundry_uf)
-    # cons = (collocation_cons, boundry_x0, boundry_xf)
+    # cons = (collocation_cons, boundry_x0, boundry_u0, boundry_xf, boundry_uf)
+    cons = (collocation_cons, boundry_x0, boundry_xf)
 
     # initial guess !
     z0 = np.array(x0 + [0.1 for i in range(k * n - 8)] + xf + u0 +
@@ -259,11 +259,10 @@ def trajectory_generator(ct, max_time):
         u_0 = u[indx]
         u_1 = u[indx + 1]
         uc = 0.5 * (u_0 + u_1)
-        us= lambda t : 2.0 / hk**2 * (tau- hk/2) * (tau- hk) * u_0 - 4.0 / hk**2 * (tau)*(tau-hk)*uc + 2.0 / hk**2 * tau * (tau-hk/2.0)*u_1
+        us= 2.0 / hk**2 * (tau- hk/2) * (tau- hk) * u_0 - 4.0 / hk**2 * (tau)*(tau-hk)*uc + 2.0 / hk**2 * tau * (tau-hk/2.0)*u_1
 
-        u_traj = us(tau)
 
-        return np.array([u_traj])
+        return np.array([us])
 
     ct.trajectory.opt_res = opt_res
     ct.trajectory.cs_ret = (x_s, u_s)
