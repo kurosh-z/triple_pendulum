@@ -37,7 +37,7 @@ from scipy.integrate import odeint
 #=============================================================
 # Standard Python modules
 #=============================================================
-from functions import *
+from myfuncs import *
 import cfg
 
 #=============================================================
@@ -163,38 +163,47 @@ def tracking_control(ct):
 
     # ipydex.IPS()
 
-    # finding states of the system using calculated K_matrix and
-    # comparing the results with desired trajecory !
+    # finding states of the system using  K_matrix :
+    
     xdot_func = sympy_states_to_func()
     print('\n \n')
     print('======================== x_closed_loop ========================')
     print('integrating to find x_closed_loop')
+
+    # xa mit Abweichung !
+    #xa = [0.0] + [np.pi/2
+    #             for i in range(len(q) - 1)] + [0 for i in range(len(q))]
 
     x_closed_loop = odeint(
         ode_function, xa, tvec, args=(xdot_func, K_matrix, tvec))
     # x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
 
     # saving x_closed_loop in a numpy file
-    np.save('x_closded_loop' + '_' + label + '_max_time_' + str(max_time) + '.npy',
+    np.save('x_closed_loop' + '_' + label + '_'+ '_max_time_' + str(max_time) + '.npy',
             x_closed_loop)
+    np.save('u_closed_loop' + '_' + label + '_'+ '_max_time_' + str(max_time) + '.npy',
+            np.array(ct.tracking.ucl))        
 
     # returning the results :
     ct.tracking.x_closed_loop = x_closed_loop
     ct.tracking.tvec = tvec
     ct.tracking.P_matrix = P
     ct.tracking.gain_matrix = K_matrix
+    ct.tracking.ucl=np.array(ct.tracking.ucl)
 
-    xs = np.array([cs_ret[0](time).tolist() for time in tvec])
     
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
     
-    fig, axes = plt.subplots()
-    axes.plot(tvec, x_closed_loop[:, 1] * 180 / np.pi, 'o')
-    axes.plot(tvec, xs[:, 1] * 180 / np.pi)
-    # axes.plot(vect, K)
+    # xs = np.array([cs_ret[0](time).tolist() for time in tvec])
     
-    plt.show()
+    # import matplotlib as mpl
+    # import matplotlib.pyplot as plt
+    
+    # fig, axes = plt.subplots()
+    # axes.plot(tvec, x_closed_loop[:, 1] * 180 / np.pi, 'o')
+    # axes.plot(tvec, xs[:, 1] * 180 / np.pi)
+    # # axes.plot(vect, K)
+    
+    # plt.show()
 
 
     ipydex.IPS()

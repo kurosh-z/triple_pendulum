@@ -33,22 +33,24 @@ import symbtools.noncommutativetools as nct
 from scipy.integrate import odeint
 import pytrajectory as pytr
 from pytrajectory import log
+
+from pytrajectory import auxiliary as aux, log, TransitionProblem
 log.console_handler.setLevel(10)
 
 #=============================================================
 # My Python modules
 #=============================================================
-from functions import *
+from myfuncs import *
 import ipydex
 
 #=============================================================
 # Trajectory Optimization
 #=============================================================
 
-# ipydex.activate_ips_on_exception()
+ipydex.activate_ips_on_exception()
 
 
-def trajectory_optimization(ct, max_time, constraints=None):
+def trajectory_generator(ct, max_time, constraints=None):
     '''
     finding the trajectory using pytrajectory
     '''
@@ -56,7 +58,7 @@ def trajectory_optimization(ct, max_time, constraints=None):
     fx = ct.model.fx
     gx = ct.model.gx
     dynamic_symbs = ct.model.dynamic_symbs
-    # converting sympy expressions to sympy functions to b used in pytrj_rhs
+    # converting sympy expressions to sympy functions to be used in pytrj_rhs
 
     ct.trajectory.qdd_functions = convert_qdd_to_func(fx, gx, dynamic_symbs)
 
@@ -73,7 +75,7 @@ def trajectory_optimization(ct, max_time, constraints=None):
     print('ready to start trajectory optimiztion !')
     print('xa', xa)
     print('xb', xb)
-
+   
     if int(pytr.__version__.split(".")[1]) > 2:
         # zusätzliche Parameter, die notwendig sind, damit auch develop-Version konvergiert
 
@@ -82,7 +84,8 @@ def trajectory_optimization(ct, max_time, constraints=None):
              "show_ir":  False,  # optionale grafische Anzeige von Zwischenergebnissen
              "use_std_approach": False,  # alte (unübliche Stützpunktdef.)
              "use_chains": False,  # Ausnutzung von Integratorketten deakt.
-             "eps": 0.07,  # größere Fehlertoleranz (Endzustand)
+             "eps": 0.1,  # größere Fehlertoleranz (Endzustand)
+             "maxIt": 5,
              "ierr": None,  # Intervallfehler ignorieren
          }
     else:
@@ -106,25 +109,54 @@ def trajectory_optimization(ct, max_time, constraints=None):
 
     if control_sys.reached_accuracy:
         print("Pytrajecotry Succeeded!")
-
+    '''
+    con={}
+    # Parallelized :
+    args = aux.Container(
+        poolsize=2,
+        ff=pytraj_rhs,
+        a=0,
+        xa=xa,
+        xb=xb,
+        ua=0,
+        ub=0,
+        use_chains=False,
+        ierr=None,
+        maxIt=6,
+        eps=0.3,
+        kx=2,
+        use_std_approach=False,
+        seed=[1, ],
+        constraints=con,
+        show_ir=True,
+        b=2)
+    
+    results = aux.parallelizedTP(debug=False, **args.dict)
+    
+    '''
+    
     # saving the results as numpy
     time_vec = np.linspace(0, max_time, 1000)
     x_traj = [cs_ret[0](t) for t in time_vec]
     u_traj = [[cs_ret[1](t) for t in time_vec]]
 
     label = ct.label
-    np.save('x_traj' + '_' + label + 'max_time_' + str(max_time) + '.npy',
+   
+    
+    np.save('x_traj' + '_' + label + '_'+ 'max_time_' + str(max_time) + '.npy',
             x_traj)
-    np.save('u_traj' + '_' + label + 'max_time_' + str(max_time) + '.npy',
+    np.save('u_traj' + '_' + label +  '_'+'max_time_' + str(max_time) + '.npy',
             u_traj)
+    '''        
 
     ct.trajectory.cs_ret = cs_ret
     ct.trajectory.pytraj_rhs = pytraj_rhs
     ct.trajectory.max_time = max_time
     ct.trajectory.xa = xa
     ct.trajectory.xb = xb
+    
+    with open ('traj_'+label+'.pkl', 'wb') as file :
+        dill.dump(ct.trajectory, file)
+    
     '''
-    with open('xs.pkl', 'wb') as file:
-        dill.dump(config.cs_ret[0], file)
-    '''
-    # ipydex.IPS()
+    ipydex.IPS()
