@@ -1,0 +1,13 @@
+tmax=2
+pytrajectory's settings :
+             "show_ir":  False, 
+             "use_std_approach": False,  
+             "use_chains": False, 
+             "eps": 0.5,  
+             "maxIt": 5,
+             "ierr": None, 
+         
+
+
+
+

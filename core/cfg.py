@@ -99,7 +99,9 @@ def Pen_Container_initializer(number_of_pendulums):
     
     # tracking
     pendata.tracking= Pen_Container('tracking')
+    pendata.tracking.ucl=[]
     pendata.number_of_pendulums= number_of_pendulums
+    
     print('somebody called me !')
 
 

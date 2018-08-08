@@ -26,7 +26,7 @@ import scipy as sc
 #=============================================================
 # Standard Python modules
 #=============================================================
-from functions import *
+from myfuncs import *
 import cfg
 
 #=============================================================
@@ -193,23 +193,33 @@ def system_model_generator(ct):
     ct.model.fx = fx
     ct.model.gx = gx
 
-    '''
     
+    for qi in q :
+        qi.__class__.__module__ = '__main__'
+    for qdoti in qdot :
+        qdoti.__class__.__module__ = '__main__'
+    for qddi in qdd :
+        qddi.__class__.__module__ = '__main__'
+
+    f.__class__.__module__ = '__main__'
+
+
+    label=ct.label
     # storing system model as binary file to be used later
-    if n == 1:
-        with open('sys_model_simple.pkl', 'wb') as file:
-            dill.dump(fx, file)
     
-    elif n == 3:
-        with open('sys_model_double.pkl', 'wb') as file:
-            dill.dump((fx, gx), file)
-    elif n == 3:
-        with open('sys_model_triple.pkl', 'wb') as file:
-            dill.dump((fx, gx), file)
+    with open('sys_model_' + label+ '.pkl', 'wb') as file:
+        dill.dump(ct.model, file)
     
+<<<<<<< HEAD
     with open('P_matrix.pkl', 'rb') as file:
         P = dill.load(file)
     '''
 
     with open('sys_model_simple.pkl', 'wb') as file:
         dill.dump(fx, file)
+=======
+    
+   
+    
+   
+>>>>>>> 591b3ec216c0347453eefd7f8fdc373746f9633d
