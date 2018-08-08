@@ -86,7 +86,7 @@ def Pen_Container_initializer(number_of_pendulums):
 
     # defining our data structure : 
 
-    pendata = Pen_Container('Inverted' + '_' + label +'_' +'Pnedelum')
+    pendata = Pen_Container('Inverted' + '_' + label +'_' +'Pendulum')
     pendata.parameter_values= parameter_values_dict[label]
     pendata.model = Pen_Container('model')
 

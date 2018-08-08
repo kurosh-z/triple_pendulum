@@ -33,13 +33,14 @@ from pydy_viz import visualization
 from matplotlib_viz import pen_animation
 from functions import sympy_states_to_func
 # from traj_DRICON import trajectory_generator
-from traj_generation import trajectory_generator
+# from traj_generation import trajectory_generator
+from traj_opt import  trajectory_optimization
 
 #=============================================================
 # main  :
 # =============================================================
 number_of_pendulums = 1
-mode = 'simulation'
+mode = 'load'
 max_time = 2
 
 if mode == 'load':
@@ -58,16 +59,18 @@ else:
 
     # modeling the system with kanes' Method
     system_model_generator(cfg.pendata)
+    
 
     # generating trajectory with pytrajectory
-
-    # trajectory_optimization(cfg.pendata, max_time)
-    trajectory_generator(cfg.pendata, max_time)
+    '''
+    trajectory_optimization(cfg.pendata, max_time)
+    # trajectory_generator(cfg.pendata, max_time)
 
     # tracking control of the time varying linear system
-    tracking_control(cfg.pendata)
+    # tracking_control(cfg.pendata)
 
     # visualizing the results :
-    visualization(cfg.pendata, mode='simulation', max_time=max_time)
+    # visualization(cfg.pendata, mode='simulation', max_time=max_time)
     # pen_animation(cfg.pendata, filename='test')
 
+    '''

@@ -184,17 +184,17 @@ def tracking_control(ct):
     ct.tracking.P_matrix = P
     ct.tracking.gain_matrix = K_matrix
 
-    xs = np.array([cs_ret[0](time).tolist() for time in tvec])
+    # xs = np.array([cs_ret[0](time).tolist() for time in tvec])
     
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt
+    # import matplotlib as mpl
+    # import matplotlib.pyplot as plt
     
-    fig, axes = plt.subplots()
-    axes.plot(tvec, x_closed_loop[:, 1] * 180 / np.pi, 'o')
-    axes.plot(tvec, xs[:, 1] * 180 / np.pi)
-    # axes.plot(vect, K)
+    # fig, axes = plt.subplots()
+    # axes.plot(tvec, x_closed_loop[:, 1] * 180 / np.pi, 'o')
+    # axes.plot(tvec, xs[:, 1] * 180 / np.pi)
+    # # axes.plot(vect, K)
     
-    plt.show()
+    # plt.show()
 
 
-    ipydex.IPS()
+    # ipydex.IPS()

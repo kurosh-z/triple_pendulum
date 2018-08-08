@@ -34,13 +34,13 @@ import cfg
 #=============================================================
 
 
-# Defining symbolic Variables
 def system_model_generator(ct):
     '''
     Modeling inverted pendulum using Kane's Method
     
     '''
 
+    # Defining symbolic Variables
     n = ct.number_of_pendulums
     q = me.dynamicsymbols('q:{}'.format(n + 1))  # generalized coordinates
     qdot = me.dynamicsymbols('qdot:{}'.format(n + 1))  #generalized speeds
@@ -211,3 +211,5 @@ def system_model_generator(ct):
         P = dill.load(file)
     '''
 
+    with open('sys_model_simple.pkl', 'wb') as file:
+        dill.dump(fx, file)
