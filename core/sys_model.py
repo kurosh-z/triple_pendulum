@@ -218,4 +218,4 @@ def system_model_generator(ct):
     with open('sys_model_' + label + '.pkl', 'wb') as file:
         dill.dump(sys_model, file)
 
-    ipydex.IPS()
+    # ipydex.IPS()

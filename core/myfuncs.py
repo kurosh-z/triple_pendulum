@@ -36,6 +36,8 @@ import numpy as np
 from numpy.linalg import inv as np_inv
 from scipy import linalg
 
+from pytrajectory import aux
+
 import dill
 
 import cfg
@@ -831,6 +833,26 @@ def load_sys_model(ct) :
     ct.model.fx=sys_model['fx']
     ct.model.gx= sys_model['gx']
 
+    return
+
+
+def load_traj_splines(ct, pfname) :
+    '''Loades splines from .pkl file containing the reults
+    ParallelizedTP and saves them to ct.trajectory.parallel_res   
+    '''
+    with open(pfname, 'rb') as pfile :
+        results= dill.load(pfile)
+
+    parallel_res=[]
+    for i, res in enumerate(results) :
+        cont_dict=res[1]
+        traj_spline= aux.unpack_splines_from_containerdict(cont_dict)
+        xxf, uuf= aux.get_xx_uu_funcs_from_containerdict(cont_dict)
+        parallel_res.append((xxf, uuf))
+
+    ct.trajectory.parallel_res= parallel_res
+    print("Trajectories Written to {}".format('ct.trajectory.parallel_res'))
+    
     return
 
 

@@ -1,0 +1,30 @@
+tmax=b=2
+pytrajectory's settings :
+      
+    args = aux.Container(
+        poolsize=3,
+        ff=pytraj_rhs,
+        a=a,
+        xa=xa,
+        xb=xb,
+        ua=0,
+        ub=0,
+        use_chains=False,
+        ierr=None,
+        maxIt=5,
+        eps=0.4,
+        kx=2,
+        use_std_approach=False,
+        seed=[
+            29,55
+        ],
+        constraints=con,
+        b=b - np.r_[0.3, 0.1])
+
+results : it reached the accuaracy needed !
+
+         
+
+
+
+
