@@ -23,6 +23,7 @@ import numpy as np
 import mpmath as mp
 import scipy as sc
 
+import ipydex
 #=============================================================
 # Standard Python modules
 #=============================================================
@@ -53,9 +54,9 @@ def system_model_generator(ct):
     a = sm.symbols('a1:{}'.format(n + 1))  #location of Mass-centers
     d = sm.symbols('d1:{}'.format(n + 1))  #viscous damping coef.
     g, t = sm.symbols('g t')
-    
+
     dynamic_symbs = q + qdot + [u]
-    
+
     # intertial reference frame
     In_frame = me.ReferenceFrame('In_frame')
 
@@ -143,7 +144,7 @@ def system_model_generator(ct):
     #xdot_expr=(mass_matrix.inv()*forcing_vector)
 
     # defining parameter values according to number of pendulum n :
-    
+
     param_values = ct.parameter_values
     param_symb = list(l + a + m + J + d + (g, f))
     param_list = zip(param_symb, param_values)
@@ -173,10 +174,10 @@ def system_model_generator(ct):
     ct.model.a = a
     ct.model.d = d
     ct.model.g = g
-    ct.model.param_dict= param_dict
+    ct.model.param_dict = param_dict
     ct.model.frames = frames
     ct.model.mass_centers = mass_centers
-    ct.model.origin_point= O
+    ct.model.origin_point = O
     ct.model.joint_centers = joint_centers
     ct.model.central_inertias = central_inertias
     ct.model.rigid_bodies = rigid_bodies
@@ -193,33 +194,28 @@ def system_model_generator(ct):
     ct.model.fx = fx
     ct.model.gx = gx
 
-    
-    for qi in q :
+    for qi in q:
         qi.__class__.__module__ = '__main__'
-    for qdoti in qdot :
+    for qdoti in qdot:
         qdoti.__class__.__module__ = '__main__'
-    for qddi in qdd :
+    for qddi in qdd:
         qddi.__class__.__module__ = '__main__'
 
     f.__class__.__module__ = '__main__'
 
-
-    label=ct.label
+    label = ct.label
     # storing system model as binary file to be used later
-    
-    with open('sys_model_' + label+ '.pkl', 'wb') as file:
-        dill.dump(ct.model, file)
-    
-<<<<<<< HEAD
-    with open('P_matrix.pkl', 'rb') as file:
-        P = dill.load(file)
-    '''
 
-    with open('sys_model_simple.pkl', 'wb') as file:
-        dill.dump(fx, file)
-=======
-    
-   
-    
-   
->>>>>>> 591b3ec216c0347453eefd7f8fdc373746f9633d
+    sys_model = {
+        'fx': fx,
+        'gx': gx,
+        'q': q,
+        'qdot': qdot,
+        'qdd': qdd,
+        'dynamic_symbs': dynamic_symbs, 
+        'param_dict':param_dict
+    }
+    with open('sys_model_' + label + '.pkl', 'wb') as file:
+        dill.dump(sys_model, file)
+
+    ipydex.IPS()

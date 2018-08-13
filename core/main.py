@@ -35,25 +35,15 @@ from tracking_control import tracking_control
 from pydy_viz import visualization
 from matplotlib_viz import pen_animation
 from myfuncs import sympy_states_to_func
+from myfuncs import load_sys_model
 # from traj_DRICON import trajectory_generator
-<<<<<<< HEAD
-# from traj_generation import trajectory_generator
-from traj_opt import  trajectory_optimization
-
-#=============================================================
-# main  :
-# =============================================================
-number_of_pendulums = 1
-mode = 'load'
-=======
 # from trajq0_generation import trajectory_generator
 import ipydex
 #=============================================================
 # main  :
 # =============================================================
-number_of_pendulums = 3
+number_of_pendulums = 1
 mode = 'simulation'
->>>>>>> 591b3ec216c0347453eefd7f8fdc373746f9633d
 max_time = 2
 
 if mode == 'load':
@@ -71,32 +61,16 @@ else:
     Pen_Container_initializer(number_of_pendulums)
 
     # modeling the system with kanes' Method
-<<<<<<< HEAD
-    system_model_generator(cfg.pendata)
+    # system_model_generator(cfg.pendata)
+    load_sys_model(cfg.pendata)
+
     
 
     # generating trajectory with pytrajectory
+    trajectory_generator(cfg.pendata, max_time)
+
     '''
-    trajectory_optimization(cfg.pendata, max_time)
-    # trajectory_generator(cfg.pendata, max_time)
-
     # tracking control of the time varying linear system
-=======
-    #system_model_generator(cfg.pendata)
-    label=cfg.pendata.label
-    with open('sys_model_' + label+ '.pkl', 'rb') as file :
-
-        model=dill.load(file)
-    
-    ipydex.IPS()
-
-    # generating trajectory with pytrajectory
-
-    #  trajectory_optimization(cfg.pendata, max_time)
-    # trajectory_generator(cfg.pendata, max_time)
-
-    # # tracking control of the time varying linear system
->>>>>>> 591b3ec216c0347453eefd7f8fdc373746f9633d
     # tracking_control(cfg.pendata)
 
     # visualizing the results :

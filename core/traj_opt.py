@@ -34,7 +34,7 @@ from scipy.integrate import odeint
 import pytrajectory as pytr
 from pytrajectory import log
 
-from pytrajectory import auxiliary as aux, log, TransitionProblem
+from pytrajectory import aux, TransitionProblem
 log.console_handler.setLevel(10)
 
 #=============================================================
@@ -75,7 +75,7 @@ def trajectory_generator(ct, max_time, constraints=None):
     print('ready to start trajectory optimiztion !')
     print('xa', xa)
     print('xb', xb)
-   
+
     if int(pytr.__version__.split(".")[1]) > 2:
         # zusätzliche Parameter, die notwendig sind, damit auch develop-Version konvergiert
 
@@ -109,31 +109,8 @@ def trajectory_generator(ct, max_time, constraints=None):
 
     if control_sys.reached_accuracy:
         print("Pytrajecotry Succeeded!")
-    '''
-    con={}
-    # Parallelized :
-    args = aux.Container(
-        poolsize=2,
-        ff=pytraj_rhs,
-        a=0,
-        xa=xa,
-        xb=xb,
-        ua=0,
-        ub=0,
-        use_chains=False,
-        ierr=None,
-        maxIt=6,
-        eps=0.3,
-        kx=2,
-        use_std_approach=False,
-        seed=[1, ],
-        constraints=con,
-        show_ir=True,
-        b=2)
     
-    results = aux.parallelizedTP(debug=False, **args.dict)
     
-    '''
     
     # saving the results as numpy
     time_vec = np.linspace(0, max_time, 1000)
@@ -147,16 +124,39 @@ def trajectory_generator(ct, max_time, constraints=None):
             x_traj)
     np.save('u_traj' + '_' + label +  '_'+'max_time_' + str(max_time) + '.npy',
             u_traj)
-    '''        
 
-    ct.trajectory.cs_ret = cs_ret
-    ct.trajectory.pytraj_rhs = pytraj_rhs
-    ct.trajectory.max_time = max_time
-    ct.trajectory.xa = xa
-    ct.trajectory.xb = xb
+    """
+
+    con = {}
+    first_guess = {'seed': 25}
+    # Parallelized :
+    S = TransitionProblem(
+        pytraj_rhs,
+        0,
+        [max_time, max_time - 0.3],
+        xa,
+        xb,
+        ua,
+        ub,
+        first_guess=first_guess,
+        kx=2,
+        eps=0.2,
+        maxIt=6,
+        use_chains=False,
+        sol_steps=1300
+        )    
+        
+    solC= S.solve(return_format= 'info_container')
+    cont_dict= aux.containerize_splines(S.eqs.trajectories.splines)
+    pfname='swingup_splines.pcl'
+
+    with open(pfname, 'wb') as pfile:
+        dill.dump(cont_dict, pfile)
+        print("Trajectories Written to {}".format(pfname))
+
+
+
+
+    """
     
-    with open ('traj_'+label+'.pkl', 'wb') as file :
-        dill.dump(ct.trajectory, file)
-    
-    '''
     ipydex.IPS()

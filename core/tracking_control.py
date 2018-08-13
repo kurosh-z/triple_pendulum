@@ -67,7 +67,6 @@ def tracking_control(ct):
     - finding feedback-control's gain at top equilibrium point
     - generate P_matrix 
     - generate gain for time varying control of the sysmtem
-
     - it needs the results form sys_model and traj_opt
 
     '''
@@ -191,13 +190,6 @@ def tracking_control(ct):
     ct.tracking.gain_matrix = K_matrix
     ct.tracking.ucl=np.array(ct.tracking.ucl)
 
-<<<<<<< HEAD
-    # xs = np.array([cs_ret[0](time).tolist() for time in tvec])
-    
-    # import matplotlib as mpl
-    # import matplotlib.pyplot as plt
-    
-=======
     
     
     # xs = np.array([cs_ret[0](time).tolist() for time in tvec])
@@ -205,7 +197,6 @@ def tracking_control(ct):
     # import matplotlib as mpl
     # import matplotlib.pyplot as plt
     
->>>>>>> 591b3ec216c0347453eefd7f8fdc373746f9633d
     # fig, axes = plt.subplots()
     # axes.plot(tvec, x_closed_loop[:, 1] * 180 / np.pi, 'o')
     # axes.plot(tvec, xs[:, 1] * 180 / np.pi)

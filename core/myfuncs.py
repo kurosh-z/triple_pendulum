@@ -22,6 +22,7 @@ To Do :
 #=============================================================
 import os, sys
 import logging
+
 #=============================================================
 # External Python modules
 #=============================================================
@@ -34,6 +35,8 @@ import sympy.physics.mechanics as me
 import numpy as np
 from numpy.linalg import inv as np_inv
 from scipy import linalg
+
+import dill
 
 import cfg
 
@@ -791,15 +794,14 @@ def generate_transformation_matrix_func(trans_matrix, dynamic_variables):
     return trans_funcs
 
 
-
-    def array_compare(a,b, tol=1e-6):
-        '''difference between two np.arrays a and b
-       
-       - Default tol is 1e-6
-       ===========
-       - Returns :
-                a tupel consist of differnece array 
-                and maximal difference
+def array_compare(a,b, tol=1e-6):
+    ''''difference between two np.arrays a and b
+    
+    - Default tol is 1e-6
+    ===========
+    - Returns :
+             a tupel consist of differnece array 
+             and maximal difference
     '''
     func1= lambda x: x if abs(x) >= tol else  0
     func2= lambda x, y: np.array([func1(xi-yi) for xi,yi in zip(x,y) ]) 
@@ -808,3 +810,29 @@ def generate_transformation_matrix_func(trans_matrix, dynamic_variables):
         
     
     return delta, max_diff
+
+def load_sys_model(ct) :
+    '''Loading system model from pickle file and 
+       save it in pendata.model
+    ***ATTENTION:
+        frames could not be loaded ! for visualization 
+        you should still run system_model_generator
+    '''    
+    label = ct.label
+    with open('sys_model_' + label + '.pkl', 'rb') as file:
+        sys_model= dill.load(file)
+
+    # saving modle in ct.model
+    ct.model.q= sys_model['q']
+    ct.model.qdot= sys_model['qdot']
+    ct.model.qdd= sys_model['qdd']
+    ct.model.dynamic_symbs= sys_model['dynamic_symbs']
+    ct.model.param_dict=sys_model['param_dict']
+    ct.model.fx=sys_model['fx']
+    ct.model.gx= sys_model['gx']
+
+    return
+
+
+
+
