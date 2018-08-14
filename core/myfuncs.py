@@ -337,11 +337,8 @@ def linearize_state_equ(fx,
                         dynamics_symbs,
                         operation_point=None,
                         output_mode='numpy_array'):
-    '''
-    TODO: solve potential promblem with lambdify if the results are null
-
-    generate Linearzied form of state Equations at a given 
-    equilibrium point.
+    '''generates Linearzied form of state Equations at a given 
+       equilibrium point.
     
     
          xdot= fx + gx.u ---> x_dot= A.delta_x + B.delta_u
@@ -485,7 +482,7 @@ def pytraj_rhs(x, u, uref=None, t=None, pp=None):
 
 
 # riccuti differential equation
-def riccati_diff_equ(P, t, A_func, B_func, Q, R, dynamic_symbs):
+def riccati_diff_equ(P, t, A_func, B_func, Q, R, dynamic_symbs, traj_label):
     '''
     =========================================================
     DESCRIPTION :
@@ -526,7 +523,7 @@ def riccati_diff_equ(P, t, A_func, B_func, Q, R, dynamic_symbs):
     # outside of the our t=(0, end_time)
     print('riccati t: ', t)
     len_q = int((len(dynamic_symbs) - 1) / 2)
-    cs_ret = cfg.pendata.trajectory.cs_ret
+    cs_ret = cfg.pendata.trajectory.parallel_res[traj_label]
 
     if t < 0:
         x0 = [0] + [np.pi
@@ -559,14 +556,14 @@ def riccati_diff_equ(P, t, A_func, B_func, Q, R, dynamic_symbs):
 
 
 # lqr_tracking function :
-def generate_gain_matrix(R, B_func, P, Vect, dynamic_symbs):
+def generate_gain_matrix(R, B_func, P, Vect, dynamic_symbs, traj_label):
     '''
     returns input 'u' for tracking 
     each row of K_matrix include gain k at time t
      -->  num_rows= len(Vect), num_columns= len(states)
                  
     '''
-    cs_ret = cfg.pendata.trajectory.cs_ret
+    cs_ret = cfg.pendata.trajectory.parallel_res[traj_label]
     # K_matrix is a m*n matrix with m=len(Vect) and n=len_states :
     len_states = len(dynamic_symbs) - 1
     K_matrix = np.zeros((len(Vect), len_states))
@@ -658,7 +655,7 @@ def sympy_states_to_func():
 
 
 # ode_function to be used in odeint
-def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
+def ode_function(x, t, xdot_func, K_matrix, Vect,traj_label, mode='Closed_loop'):
     '''
     it's the dx/dt=func(x, t, args)  to be used in odeint
     (the first two arguments are system state x and time t)
@@ -682,7 +679,7 @@ def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
     # n=len(Vect)
     # logging.debug('t: %s \n', t)
 
-    cs_ret = cfg.pendata.trajectory.cs_ret
+    cs_ret = cfg.pendata.trajectory.parallel_res[traj_label]
     print('t ode_func', t)
     if t > Vect[-1]:
         t = Vect[-1]
@@ -705,7 +702,7 @@ def ode_function(x, t, xdot_func, K_matrix, Vect, mode='Closed_loop'):
     elif mode == 'Open_loop':
         inputs = us
     #storing inputs in ucl
-    cfg.pendata.tracking.ucl.append(inputs)
+    cfg.pendata.tracking.tracking_res[traj_label]['ucl'].append(inputs)
     state = x
 
     # logging.debug('us: %s', us)
@@ -841,20 +838,52 @@ def load_traj_splines(ct, pfname) :
     ParallelizedTP and saves them to ct.trajectory.parallel_res   
     '''
     with open(pfname, 'rb') as pfile :
-        results= dill.load(pfile)
+        trajectories= dill.load(pfile)
 
     parallel_res=[]
-    for i, res in enumerate(results) :
-        cont_dict=res[1]
+    for trajectory in trajectories :
+        cont_dict= trajectory[1][1]
+        traj_label= trajectory[0]
         traj_spline= aux.unpack_splines_from_containerdict(cont_dict)
         xxf, uuf= aux.get_xx_uu_funcs_from_containerdict(cont_dict)
-        parallel_res.append((xxf, uuf))
+        parallel_res.append((traj_label,(xxf, uuf)))
 
-    ct.trajectory.parallel_res= parallel_res
-    print("Trajectories Written to {}".format('ct.trajectory.parallel_res'))
+    ct.trajectory.parallel_res=dict(parallel_res) 
+    print("Trajectories Written to ct.trajectory.parallel_res")
     
     return
 
+def load_pytrajectory_results(ct, pfname):
+    '''  if you want to pickle the results again you should'nt
+         use load_traj_splines! (for example: multiprocessing needs
+         arguments to be pickleable!)
+         Instead you can use load_pytrajectory_results
+    '''
+    with open(pfname, 'rb') as pfile :
+        ct.trajectory.pytrajectory_res=dill.load(pfile)
+    print("pytrajectory_results Written to ct.trajectory.pytrajecotry_res")
+        
+    return     
 
+def convert_container_res_to_splines(ct, traj_label):
+    ''' Converts containerized results of pytrajecotry 
+        to callabel functions of xx and uu
+
+        INPUTS:
+        ct: container = cfg.pendata
+        traj_label : label of the desired trajecotry 
+
+        OUTPUTS:
+        parallel_res : will be saved in ct.trajectory.parallel_res
+    '''
+    trajectory= ct.trajecotry.pytrajectory_res[traj_label]
+    cont_dict=trajectory[1]
+    traj_spline= aux.unpack_splines_from_containerdict(cont_dict)
+    xxf, uuf= aux.get_xx_uu_funcs_from_containerdict(cont_dict)
+    ct.trajecotry.parallel_res[traj_label]= (xxf, uuf)
+    print("Trajectories Written to ct.trajectory.parallel_res")
+
+    
+     
 
 

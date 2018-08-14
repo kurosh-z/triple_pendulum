@@ -92,14 +92,13 @@ def Pen_Container_initializer(number_of_pendulums):
 
     # trajectory :
     pendata.trajectory= Pen_Container('Trajecory')
-    pendata.trajectory.k= None
+    # pendata.trajectory.k= None
     # pendata.trajectory.n=[]
     # pendata.trajectory.max_time
     # pendata.trajectory.fxu=lambda x, u: print('you have to define fxu !')
     
     # tracking
     pendata.tracking= Pen_Container('tracking')
-    pendata.tracking.ucl=[]
     pendata.number_of_pendulums= number_of_pendulums
     
     print('somebody called me !')

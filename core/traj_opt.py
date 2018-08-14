@@ -75,7 +75,9 @@ def trajectory_generator(ct, max_time, constraints=None):
     ub = [0.0]
 
     a = 0
-    b = max_time
+    b = max_time- np.r_[0.1, 0.2]
+    seed=[29,55]
+
 
     print('ready to start trajectory optimiztion !')
     print('xa', xa)
@@ -133,7 +135,7 @@ def trajectory_generator(ct, max_time, constraints=None):
     """
 
     con = {}
-    first_guess = {'seed': 25}
+    # first_guess = {'seed': 25}
     # Parallelized :
 
     # S = TransitionProblem(
@@ -153,7 +155,7 @@ def trajectory_generator(ct, max_time, constraints=None):
     #     )
 
     args = aux.Container(
-        poolsize=3,
+        poolsize=2,
         ff=pytraj_rhs,
         a=a,
         xa=xa,
@@ -162,25 +164,42 @@ def trajectory_generator(ct, max_time, constraints=None):
         ub=0,
         use_chains=False,
         ierr=None,
-        maxIt=5,
-        eps=0.32,
+        maxIt=4,
+        eps=0.8,
         kx=2,
         use_std_approach=False,
-        seed=[
-            29,55,88
-        ],
+        seed=seed,
         constraints=con,
-        b=b - np.r_[0.1, 0.2, 0.3, 0.4, 0.5, 0.6])
+        b=b )
+
+
+
 
     results = aux.parallelizedTP(debug=False, save_results=False, **args.dict)
 
+    seed_times=[(se, t) for t in b for se in seed]
+
+    traj_lables = [
+        '{}_{}'.format(seed_time[0], seed_time[1]) for seed_time in seed_times
+    ]
+    
+    trajectories= zip(traj_lables,results)
     # solC = S.solve(return_format='info_container')
     # cont_dict = aux.containerize_splines(S.eqs.trajectories.splines)
     pfname = 'swingup_splines_' + label + '.pcl'
-
-
     with open(pfname, 'wb') as pfile:
-        dill.dump(results, pfile)
+        dill.dump(trajectories, pfile)
         print("Trajectories Written to {}".format(pfname))
+
+    
+    ct.trajectory.seed_times= seed_times
+    ct.trajectory.pytrajectory_res= trajectories
+    ct.trajectory.xa= xa
+    ct.trajectory.xb= xb
+    ct.trajecotry.a= a
+    ct.trajectory.b= b
+    ct.trajectory.ua= ua
+    ct.trajectory.ub= ub
+    
 
     ipydex.IPS()
