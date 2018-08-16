@@ -68,34 +68,29 @@ def jac_func(ct):
     fx = ct.model.fx
     gx = ct.model.gx
 
-    xx = sm.Matrix([q+qdot+[u]])
+    xx = sm.Matrix([q + qdot + [u]])
     # we just need qdds so:
     fxu = sm.Matrix((fx + gx * u))
     jac = fxu.jacobian(xx)
-    
+
     # to avoid lambdify's bug we need to lambdify every single component
     jac_funcs = [
-        sm.lambdify(xx, jac[i, j], 'numpy') for i in range(2*len(q))
-        for j in range(2*len(q)+1)
+        sm.lambdify(xx, jac[i, j], 'numpy') for i in range(2 * len(q))
+        for j in range(2 * len(q) + 1)
     ]
 
     def jac_func(x, u):
         ''' returns numpy array of jacobian evaluated at x and u
             Inputs :x and u should be given as numpy array
         '''
-        n=int(len(x))
-        xx=np.array( x.tolist() + u.tolist())
-        jac= np.array([jac_funcs[i](*xx) for i in range(n*(n+1))]).reshape(n, n+1)
+        n = int(len(x))
+        xx = np.array(x.tolist() + u.tolist())
+        jac = np.array(
+            [jac_funcs[i](*xx) for i in range(n * (n + 1))]).reshape(n, n + 1)
 
         return jac
 
     return jac_func
-
-                
-    
-
-    
-
 
 
 def generate_state_equ_new(mass_matrix, forcing_vector, qdot, qdd, u):
@@ -331,7 +326,6 @@ def generate_state_equ_test(mass_matrix, forcing_vector, qdot, qdd, u):
     return fx, gx
 
 
-
 def linearize_state_equ(fx,
                         gx,
                         dynamics_symbs,
@@ -387,7 +381,6 @@ def linearize_state_equ(fx,
         # converting to numpy
         A_numpy = np.array(A.tolist()).astype(np.float64)
         B_numpy = np.array(B.tolist()).astype(np.float64)
-        print('A_numpy')
         ret = A_numpy, B_numpy
 
     elif output_mode == 'numpy_func':
@@ -449,7 +442,7 @@ def convert_qdd_to_func(fx, gx, dynamic_symbs, param_dict=None):
 
 def pytraj_rhs(x, u, uref=None, t=None, pp=None):
     '''
-     right hand side function for pytrajecotry  
+     right hand side function for pytrajectory  
      YOU SHOULD: run convert_qdd_to_func once before using pytraj_rhs !!!
      
      GOOD TO KNOW :for pytrajectory rhs function must be defined as a 
@@ -521,7 +514,7 @@ def riccati_diff_equ(P, t, A_func, B_func, Q, R, dynamic_symbs, traj_label):
     # logging.debug('t : %f \n', t)
     # extra conditions just for the case that odeint use samples
     # outside of the our t=(0, end_time)
-    print('riccati t: ', t)
+    # print('riccati t: ', t)
     len_q = int((len(dynamic_symbs) - 1) / 2)
     cs_ret = cfg.pendata.trajectory.parallel_res[traj_label]
 
@@ -655,7 +648,13 @@ def sympy_states_to_func():
 
 
 # ode_function to be used in odeint
-def ode_function(x, t, xdot_func, K_matrix, Vect,traj_label, mode='Closed_loop'):
+def ode_function(x,
+                 t,
+                 xdot_func,
+                 K_matrix,
+                 Vect,
+                 traj_label,
+                 mode='Closed_loop'):
     '''
     it's the dx/dt=func(x, t, args)  to be used in odeint
     (the first two arguments are system state x and time t)
@@ -680,7 +679,7 @@ def ode_function(x, t, xdot_func, K_matrix, Vect,traj_label, mode='Closed_loop')
     # logging.debug('t: %s \n', t)
 
     cs_ret = cfg.pendata.trajectory.parallel_res[traj_label]
-    print('t ode_func', t)
+    # print('t ode_func', t)
     if t > Vect[-1]:
         t = Vect[-1]
 
@@ -702,7 +701,7 @@ def ode_function(x, t, xdot_func, K_matrix, Vect,traj_label, mode='Closed_loop')
     elif mode == 'Open_loop':
         inputs = us
     #storing inputs in ucl
-    cfg.pendata.tracking.tracking_res[traj_label]['ucl'].append(inputs)
+    cfg.pendata.tracking.tracking_res[traj_label]['ucl'].append(*inputs)
     state = x
 
     # logging.debug('us: %s', us)
@@ -793,7 +792,7 @@ def generate_transformation_matrix_func(trans_matrix, dynamic_variables):
     return trans_funcs
 
 
-def array_compare(a,b, tol=1e-6):
+def array_compare(a, b, tol=1e-6):
     ''''difference between two np.arrays a and b
     
     - Default tol is 1e-6
@@ -802,56 +801,57 @@ def array_compare(a,b, tol=1e-6):
              a tupel consist of differnece array 
              and maximal difference
     '''
-    func1= lambda x: x if abs(x) >= tol else  0
-    func2= lambda x, y: np.array([func1(xi-yi) for xi,yi in zip(x,y) ]) 
-    delta= np.array([func2(xs1,xs2) for xs1, xs2 in zip(a, b) ])
-    max_diff= np.amax(np.array([func1(deltai) for deltai in delta]))
-        
-    
+    func1 = lambda x: x if abs(x) >= tol else 0
+    func2 = lambda x, y: np.array([func1(xi - yi) for xi, yi in zip(x, y)])
+    delta = np.array([func2(xs1, xs2) for xs1, xs2 in zip(a, b)])
+    max_diff = np.amax(np.array([func1(deltai) for deltai in delta]))
+
     return delta, max_diff
 
-def load_sys_model(ct) :
+
+def load_sys_model(ct):
     '''Loading system model from pickle file and 
        save it in pendata.model
     ***ATTENTION:
         frames could not be loaded ! for visualization 
         you should still run system_model_generator
-    '''    
+    '''
     label = ct.label
     with open('sys_model_' + label + '.pkl', 'rb') as file:
-        sys_model= dill.load(file)
+        sys_model = dill.load(file)
 
     # saving modle in ct.model
-    ct.model.q= sys_model['q']
-    ct.model.qdot= sys_model['qdot']
-    ct.model.qdd= sys_model['qdd']
-    ct.model.dynamic_symbs= sys_model['dynamic_symbs']
-    ct.model.param_dict=sys_model['param_dict']
-    ct.model.fx=sys_model['fx']
-    ct.model.gx= sys_model['gx']
+    ct.model.q = sys_model['q']
+    ct.model.qdot = sys_model['qdot']
+    ct.model.qdd = sys_model['qdd']
+    ct.model.dynamic_symbs = sys_model['dynamic_symbs']
+    ct.model.param_dict = sys_model['param_dict']
+    ct.model.fx = sys_model['fx']
+    ct.model.gx = sys_model['gx']
 
     return
 
 
-def load_traj_splines(ct, pfname) :
+def load_traj_splines(ct, pfname):
     '''Loades splines from .pkl file containing the reults
     ParallelizedTP and saves them to ct.trajectory.parallel_res   
     '''
-    with open(pfname, 'rb') as pfile :
-        trajectories= dill.load(pfile)
+    with open(pfname, 'rb') as pfile:
+        trajectories = dill.load(pfile)
 
-    parallel_res=[]
-    for trajectory in trajectories :
-        cont_dict= trajectory[1][1]
-        traj_label= trajectory[0]
-        traj_spline= aux.unpack_splines_from_containerdict(cont_dict)
-        xxf, uuf= aux.get_xx_uu_funcs_from_containerdict(cont_dict)
-        parallel_res.append((traj_label,(xxf, uuf)))
+    parallel_res = []
+    for trajectory in trajectories:
+        cont_dict = trajectory[1][1]
+        traj_label = trajectory[0]
+        traj_spline = aux.unpack_splines_from_containerdict(cont_dict)
+        xxf, uuf = aux.get_xx_uu_funcs_from_containerdict(cont_dict)
+        parallel_res.append((traj_label, (xxf, uuf)))
 
-    ct.trajectory.parallel_res=dict(parallel_res) 
+    ct.trajectory.parallel_res = dict(parallel_res)
     print("Trajectories Written to ct.trajectory.parallel_res")
-    
+
     return
+
 
 def load_pytrajectory_results(ct, pfname):
     '''  if you want to pickle the results again you should'nt
@@ -859,31 +859,80 @@ def load_pytrajectory_results(ct, pfname):
          arguments to be pickleable!)
          Instead you can use load_pytrajectory_results
     '''
-    with open(pfname, 'rb') as pfile :
-        ct.trajectory.pytrajectory_res=dill.load(pfile)
-    print("pytrajectory_results Written to ct.trajectory.pytrajecotry_res")
-        
-    return     
+    with open(pfname, 'rb') as pfile:
+        pytrajectory_res = dill.load(pfile)
+
+    ct.trajectory.pytrajectory_res = dict(pytrajectory_res)
+    print("pytrajectory_results Written to ct.trajectory.pytrajectory_res")
+
+    return
+
 
 def convert_container_res_to_splines(ct, traj_label):
-    ''' Converts containerized results of pytrajecotry 
+    ''' Converts containerized results of pytrajectory 
         to callabel functions of xx and uu
 
         INPUTS:
         ct: container = cfg.pendata
-        traj_label : label of the desired trajecotry 
+        traj_label : label of the desired trajectory 
 
         OUTPUTS:
         parallel_res : will be saved in ct.trajectory.parallel_res
     '''
-    trajectory= ct.trajecotry.pytrajectory_res[traj_label]
-    cont_dict=trajectory[1]
-    traj_spline= aux.unpack_splines_from_containerdict(cont_dict)
-    xxf, uuf= aux.get_xx_uu_funcs_from_containerdict(cont_dict)
-    ct.trajecotry.parallel_res[traj_label]= (xxf, uuf)
+    trajectory = ct.trajectory.pytrajectory_res[traj_label]
+    cont_dict = trajectory[1]
+    traj_spline = aux.unpack_splines_from_containerdict(cont_dict)
+    xxf, uuf = aux.get_xx_uu_funcs_from_containerdict(cont_dict)
+    ct.trajectory.parallel_res[traj_label] = (xxf, uuf)
     print("Trajectories Written to ct.trajectory.parallel_res")
 
+
+def load_tracking_results(ct, file_names):
+    '''loads x_closed_loop , u_closed_loop, k_matrix ...
+    results will be saved in ct.tracking.tracking_res['traj_label']['x_closed_loop']
+    (a dictionary with traj_labels as keys, and values are dictionaries with keys :
+    x_closed_loop, u_closed_loop and so an )
+
+    INPUTS : 
     
-     
+    ct: container of type Pendata
+    file_names: a list containing the file_names to be loaded
+    '''
+    # provide a dictionary for the results to be saved to  :
+    traj_labels = []
+    for file_name in file_names:
+        tmp = file_name.split("_")
+        time = tmp[-1].split(".")[0] + "." + tmp[-1].split(".")[1]
+        tmp.remove(tmp[-1])
+        seed = tmp[-1]
+        traj_label = seed + "_" + time
+        traj_labels.append(traj_label)
+
+    ct.tracking.tracking_res = dict(
+        [(traj_label, {}) for traj_label in traj_labels])
+
+    for indx, file_name in enumerate(file_names):
+        tmp = file_name.split("_")
+        if tmp[0] == "x":
+            key = "x_closed_loop"
+        elif tmp[0] == "u":
+            key = "u_closed_loop"
+        elif tmp[0] == "K":
+            key = "K_matrix"
+        else:
+            msg = 'the file_name{} is not in a correct format '.format(
+                file_name)
+            print(msg)
+        # savet the results to the dictionary
+        traj_label = traj_labels[indx]
+        value= np.load(file_name)
+        ct.tracking.tracking_res[traj_label].update({key: value })
+        
+
+    return
 
 
+
+def save_tracking_results_to_contianer(ct, traj_label, x_closed_loop):
+    ct.tracking.tracking_res[traj_label]['x_closed_loop'] = x_closed_loop
+    return

@@ -4,10 +4,10 @@
 To Do :
   - finding a general way to define Q and R according to number of pendulums
   - (should I have a dynamic way of changing  Q and R to find the best result ?! )
-  - find the better ways compatible with ptyhon2 of calculating things generally 
+  - find the better ways compatible with ptyhon2 of calculating things generally
     every n
   - logging should be changed (maybe to a file instead of consol!)
-  -  visualization should be wiritten for genereal n pendulum 
+  -  visualization should be wiritten for genereal n pendulum
 '''
 #=============================================================
 # Standard Python modules
@@ -15,6 +15,7 @@ To Do :
 import os
 import sys
 from multiprocessing import Pool
+import multiprocessing
 # from pathos.multiprocessing import ProcessingPool as Pool
 import dill
 # import logging
@@ -65,38 +66,40 @@ import cfg
 
 def parallelized_tracking_control(ct, pool_size=3):
     '''
-    
+
     - linearize the system at top equilibrium point
     - finding feedback-control's gain at top equilibrium point
-    - generate P_matrix 
+    - generate P_matrix
     - generate gain for time varying control of the sysmtem
     - it needs the results form sys_model and traj_opt
 
     '''
-    
-     
-    # fining key and values of pytrajecotory_res
-    pytrajectory_res= ct.trajectory.pytrajectory_res
-    traj_keys, traj_values= zip(*pytrajectory_res)
-    processor_pool=Pool(pool_size)
 
+    # fining key and values of pytrajecotory_res
+    pytrajectory_res = ct.trajectory.pytrajectory_res
+    traj_keys, traj_values = zip(*pytrajectory_res.items())
     # provide a dictionary for the results to be saved to !
     ct.tracking.tracking_res = dict([(traj_key, {}) for traj_key in traj_keys])
-
     # provide a dictionary for the xx and uu functions to be saved to !
-    ct.trajectory.parallel_res=dict([(traj_key, ()) for traj_key in traj_keys]) 
+    ct.trajectory.parallel_res = dict(
+        [(traj_key, ()) for traj_key in traj_keys])
 
-    #
     # multi_args=[(ct, traj_key) for traj_key in traj_keys]
+    processor_pool = Pool(pool_size)
+    # ipydex.IPS()
+    processor_pool.map(_tracking_control, [traj_keys[1]])
 
-    processor_pool.map(_tracking_control, traj_keys)
-    
-
-
+    # Process_jobs=[]
+    # for key in traj_keys :
+    #     p= multiprocessing.Process(target= _tracking_control, args=(key,))
+    #     Process_jobs.append(p)
+    #     p.start()
+    #     p.join()
     """
     # finding key and values of trajectories
     trajectories = ct.trajectory.parallel_res
     traj_keys, traj_values = zip(*trajectories.items())
+
 
     # defining arg_keys and arg_values for argdict (to pass to _tracking_contorl)
     arg_keys = [('ct', 'traj_label') for i in range(len(trajectories))]
@@ -123,7 +126,8 @@ def _tracking_control(arg_tupel):
     '''
 
     # ct = arg_tupel[0]
-    ct= cfg.pendata
+    ct = cfg.pendata
+    # print(dir(ct.tracking))
     # traj_label = arg_tupel[1]
     traj_label = arg_tupel
 
@@ -169,7 +173,6 @@ def _tracking_control(arg_tupel):
     A_func, B_func = linearize_state_equ(
         fx, gx, dynamic_symbs, output_mode='numpy_func')
 
-
     # ct.tracking.k_top = k_top
     # ct.tracking.Pe = Pe
     # ct.tracking.A_func = A_func
@@ -178,12 +181,13 @@ def _tracking_control(arg_tupel):
     # ct.tracking.R = R
 
     # provide a list for u_closed_loop to be saved to !
-    ipydex.IPS()
+    # ipydex.IPS()
+    # print('label',traj_label)
     ct.tracking.tracking_res[traj_label].update({'ucl': []})
-    
+
     # convert containerized results of pytrajectory to functions!
     convert_container_res_to_splines(ct, traj_label)
-    
+
     # solving riccati differential equations inverse in time :
     frames_per_sec = 240
     tvec = np.linspace(0.0, final_time, final_time * frames_per_sec)
@@ -236,28 +240,34 @@ def _tracking_control(arg_tupel):
     #xa = [0.0] + [np.pi/2
     #             for i in range(len(q) - 1)] + [0 for i in range(len(q))]
 
+    xa = [0.0] + [np.pi
+                  for i in range(len(q) - 1)] + [0.0 for i in range(len(q))]
+
     x_closed_loop = odeint(
         ode_function, xa, tvec, args=(xdot_func, K_matrix, tvec, traj_label))
+
     # x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
 
     # saving x_closed_loop in a numpy file
-    np.save('x_closed_loop' + '_' + label + '_' + traj_label + '_final_time_' +
-            str(final_time) + '.npy', x_closed_loop)
-    np.save('u_closed_loop' + '_' + label + '_' + traj_label + '_max_time_' +
-            str(final_time) + '.npy', np.array(ct.tracking.ucl))
+    np.save('x_closed_loop' + '_' + label + '_' + traj_label + '.npy',
+            x_closed_loop)
+
+    np.save('u_closed_loop' + '_' + label + '_' + traj_label + '.npy',
+            np.array(ct.tracking.tracking_res[traj_label]['ucl']))
 
     # returning the results :
-    ct.tracking.tracking_res[traj_label].update({
-        'x_closed_loop': x_closed_loop
-    })
-    ct.tracking.tvec = tvec
-    ct.tracking.tracking_res[traj_label].update({'P': P})
-    ct.tracking.tracking_res[traj_label].update({'K_matrix': K_matrix})
-    ct.tracking.tracking_res[traj_label].update({
-        'ucl':
-        np.array(ct.tracking.tracking_res[traj_label]['ucl'])
-    })
-    
+    # ct.tracking.tracking_res[traj_label].update({
+    #     'x_closed_loop': x_closed_loop
+    # }
+    # save_tracking_results_to_contianer(ct, traj_label,x_closed_loop)
+        
+    # print(ct.tracking.tracking_res[traj_label])
+    # ct.tracking.tvec = tvec
+    # ct.tracking.tracking_res[traj_label].update({'P': P})
+    # ct.tracking.tracking_res[traj_label].update({'K_matrix': K_matrix})
+    # ct.tracking.tracking_res[traj_label].update({
+    #     'ucl':
+    #     np.array(ct.tracking.tracking_res[traj_label]['ucl'])
+    # })
 
-    # ipydex.IPS()
     return

@@ -38,6 +38,7 @@ from myfuncs import sympy_states_to_func
 from myfuncs import load_sys_model
 from myfuncs import load_traj_splines
 from myfuncs import load_pytrajectory_results
+from myplots import myplot
 # from traj_DRICON import trajectory_generator
 # from trajq0_generation import trajectory_generator
 import ipydex
@@ -57,13 +58,18 @@ load_sys_model(cfg.pendata)
 # generating trajectory with pytrajectory
 # trajectory_generator(cfg.pendata, max_time)
 
-label = cfg.pendata.label
-pfname = 'swingup_splines_' + label + '.pcl'
+# label = cfg.pendata.label
+# pfname = 'swingup_splines_' + label + '.pcl'
 # load_traj_splines(cfg.pendata, pfname)
-load_pytrajectory_results(cfg.pendata, pfname)
+# load_pytrajectory_results(cfg.pendata, pfname)
+
+# # ipydex.IPS()
+# # tracking control of the time varying linear system
+# parallelized_tracking_control(cfg.pendata, pool_size=2)
+
+myplot(cfg.pendata)
 ipydex.IPS()
-# tracking control of the time varying linear system
-parallelized_tracking_control(cfg.pendata, pool_size=2)
+
 # visualizing the results :
 # visualization(cfg.pendata, mode='simulation', max_time=max_time)
 # pen_animation(cfg.penda
