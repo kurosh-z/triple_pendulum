@@ -174,7 +174,7 @@ def tracking_control(ct):
     #             for i in range(len(q) - 1)] + [0 for i in range(len(q))]
 
     x_closed_loop = odeint(
-        ode_function, xa, tvec, args=(xdot_func, K_matrix, tvec))
+        ode_unction, xa, tvec, args=(xdot_func, K_matrix, tvec))
     # x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
 
     # saving x_closed_loop in a numpy file

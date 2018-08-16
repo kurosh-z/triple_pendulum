@@ -153,7 +153,7 @@ def trajectory_generator(ct, max_time, constraints=None):
     #     )
 
     args = aux.Container(
-        poolsize=3,
+        poolsize=4,
         ff=pytraj_rhs,
         a=a,
         xa=xa,
@@ -162,15 +162,15 @@ def trajectory_generator(ct, max_time, constraints=None):
         ub=0,
         use_chains=False,
         ierr=None,
-        maxIt=5,
+        maxIt=6,
         eps=0.32,
         kx=2,
         use_std_approach=False,
         seed=[
-            29,55,88
+            19,39,65,88,137
         ],
         constraints=con,
-        b=b - np.r_[0.1, 0.2, 0.3, 0.4, 0.5, 0.6])
+        b=b - np.r_[0.1, 0.2, 0.3, 0.4, 0.5])
 
     results = aux.parallelizedTP(debug=False, save_results=False, **args.dict)
 

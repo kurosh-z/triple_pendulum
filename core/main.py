@@ -67,16 +67,15 @@ else:
     
 
     # generating trajectory with pytrajectory
-    trajectory_generator(cfg.pendata, max_time)
+    # trajectory_generator(cfg.pendata, max_time)
     
-    # label= cfg.pendata.label
-    # pfname = 'swingup_splines_' + label + '.pcl'
-    # load_traj_splines(cfg.pendata, pfname)
+    label= cfg.pendata.label
+    pfname = 'swingup_splines_' + label + '.pcl'
+    load_traj_splines(cfg.pendata, pfname)
     ipydex.IPS()
     '''
     # tracking control of the time varying linear system
     # tracking_control(cfg.pendata)
-
 
     # visualizing the results :
     # visualization(cfg.pendata, mode='simulation', max_time=max_time)
