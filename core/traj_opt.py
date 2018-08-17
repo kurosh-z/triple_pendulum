@@ -75,8 +75,8 @@ def trajectory_generator(ct, max_time, constraints=None):
     ub = [0.0]
 
     a = 0
-    b = max_time- np.r_[0.1, 0.2]
-    seed=[29,55]
+    b = max_time- np.r_[0.25, 0.35, 0.45]
+    seed=[19,29]
 
 
     print('ready to start trajectory optimiztion !')
@@ -155,7 +155,7 @@ def trajectory_generator(ct, max_time, constraints=None):
     #     )
 
     args = aux.Container(
-        poolsize=2,
+        poolsize=4,
         ff=pytraj_rhs,
         a=a,
         xa=xa,
@@ -164,8 +164,8 @@ def trajectory_generator(ct, max_time, constraints=None):
         ub=0,
         use_chains=False,
         ierr=None,
-        maxIt=4,
-        eps=0.8,
+        maxIt=6,
+        eps=0.32,
         kx=2,
         use_std_approach=False,
         seed=seed,
@@ -179,11 +179,11 @@ def trajectory_generator(ct, max_time, constraints=None):
 
     seed_times=[(se, t) for t in b for se in seed]
 
-    traj_lables = [
+    traj_labels = [
         '{}_{}'.format(seed_time[0], seed_time[1]) for seed_time in seed_times
     ]
     
-    trajectories= zip(traj_lables,results)
+    trajectories= zip(traj_labels,results)
     # solC = S.solve(return_format='info_container')
     # cont_dict = aux.containerize_splines(S.eqs.trajectories.splines)
     pfname = 'swingup_splines_' + label + '.pcl'

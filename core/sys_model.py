@@ -13,7 +13,7 @@ import dill
 #=============================================================
 # External Python modules
 #=============================================================
-#from __future__ import division, print_function
+#from __future__ import deviation, print_function
 from sympy.physics.vector import init_vprinting, vlatex
 init_vprinting(use_latex='mathjax', pretty_print=True)
 
@@ -35,7 +35,7 @@ import cfg
 #=============================================================
 
 
-def system_model_generator(ct):
+def system_model_generator(ct, param_deviation=False):
     '''
     Modeling inverted pendulum using Kane's Method
     
@@ -144,8 +144,20 @@ def system_model_generator(ct):
     #xdot_expr=(mass_matrix.inv()*forcing_vector)
 
     # defining parameter values according to number of pendulum n :
+    if param_deviation == True:
+        param_dict_with_deviation = ct.model.param_dict_with_deviation
 
-    param_values = ct.parameter_values
+        param_values = [param_dict_with_deviation[str(li)] for li in l] + [
+            param_dict_with_deviation[str(ai)] for ai in a
+        ] + [param_dict_with_deviation[str(mi)]
+             for mi in m] + [param_dict_with_deviation[str(Ji)] for Ji in J] + [
+                 param_dict_with_deviation[str(di)] for di in d
+             ] + [param_dict_with_deviation['g']
+                  ] + [param_dict_with_deviation['f']]
+
+    else:
+        param_values = ct.parameter_values
+    
     param_symb = list(l + a + m + J + d + (g, f))
     param_list = zip(param_symb, param_values)
     param_dict = dict(param_list)
@@ -206,16 +218,27 @@ def system_model_generator(ct):
     label = ct.label
     # storing system model as binary file to be used later
 
+    param_tol_dict = ct.model.param_tol_dict if param_deviation else None
+    default_tol= ct.model.default_tol if param_deviation else 'zero'
+
     sys_model = {
         'fx': fx,
         'gx': gx,
         'q': q,
         'qdot': qdot,
         'qdd': qdd,
-        'dynamic_symbs': dynamic_symbs, 
-        'param_dict':param_dict
+        'dynamic_symbs': dynamic_symbs,
+        'param_dict': param_dict,
+        'param_tol_dict': param_tol_dict ,
+        'default_tol': default_tol
     }
-    with open('sys_model_' + label + '.pkl', 'wb') as file:
+
+    if param_deviation == True:
+        model_name = 'sys_model_' + 'with_param_deviation_'+ default_tol +'_'+ label + '.pkl'
+    else:
+        model_name = 'sys_model_' + label + '.pkl'
+
+    with open(model_name, 'wb') as file:
         dill.dump(sys_model, file)
 
     # ipydex.IPS()

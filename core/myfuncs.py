@@ -16,11 +16,11 @@ To Do :
 
 
 '''
-#from __future__ import division, print_function
+#from __future__ import deviation, print_function
 #=============================================================
 # Standard Python modules
 #=============================================================
-import os, sys
+import os, sys, glob
 import logging
 
 #=============================================================
@@ -580,7 +580,7 @@ def generate_gain_matrix(R, B_func, P, Vect, dynamic_symbs, traj_label):
 
 
 # converting symbolic state equations to functions
-def sympy_states_to_func():
+def sympy_states_to_func(model_with_param_deviation=False):
     '''it converts symbolic state equations to functions
 
     ATTENTION :
@@ -599,9 +599,15 @@ def sympy_states_to_func():
     OUTPUTS :
     - callable state_func(state, input) 
     '''
+
     dynamic_symbs = cfg.pendata.model.dynamic_symbs
-    fx = cfg.pendata.model.fx
-    gx = cfg.pendata.model.gx
+    if model_with_param_deviation:
+        fx = cfg.pendata.model.fx_with_deviation
+        gx = cfg.pendata.model.gx_with_deviation
+    else:
+        fx = cfg.pendata.model.fx
+        gx = cfg.pendata.model.gx
+
     u = dynamic_symbs[-1]
     num_states = len(dynamic_symbs) - 1
 
@@ -685,7 +691,6 @@ def ode_function(x,
 
     xs = cs_ret[0](t)
     us = cs_ret[1](t)
-
     sys_dim = len(xs)
     if mode == 'Closed_loop':
         k_list = [np.interp(t, Vect, K_matrix[:, i]) for i in range(sys_dim)]
@@ -809,7 +814,7 @@ def array_compare(a, b, tol=1e-6):
     return delta, max_diff
 
 
-def load_sys_model(ct):
+def load_sys_model(ct, model_with_deviation=False):
     '''Loading system model from pickle file and 
        save it in pendata.model
     ***ATTENTION:
@@ -817,7 +822,12 @@ def load_sys_model(ct):
         you should still run system_model_generator
     '''
     label = ct.label
-    with open('sys_model_' + label + '.pkl', 'rb') as file:
+    if model_with_deviation:
+        file_name = 'sys_model_' + 'with_param_deviation_' + label + '.pkl'
+    else:
+        file_name = 'sys_model_' + label + '.pkl'
+
+    with open(file_name, 'rb') as file:
         sys_model = dill.load(file)
 
     # saving modle in ct.model
@@ -825,9 +835,21 @@ def load_sys_model(ct):
     ct.model.qdot = sys_model['qdot']
     ct.model.qdd = sys_model['qdd']
     ct.model.dynamic_symbs = sys_model['dynamic_symbs']
-    ct.model.param_dict = sys_model['param_dict']
-    ct.model.fx = sys_model['fx']
-    ct.model.gx = sys_model['gx']
+
+    if model_with_deviation:
+        ct.model.param_dict_with_deviation = sys_model['param_dict']
+        ct.model.fx_with_deviation = sys_model['fx']
+        ct.model.gx_with_deviation = sys_model['gx']
+        print(
+            'system model with deviation is loaded to ct.model.[fx / gx /pram_dict]_with_deviation'
+        )
+
+    else:
+
+        ct.model.param_dict = sys_model['param_dict']
+        ct.model.fx = sys_model['fx']
+        ct.model.gx = sys_model['gx']
+        print('system model is loaded to ct.model')
 
     return
 
@@ -864,6 +886,7 @@ def load_pytrajectory_results(ct, pfname):
 
     ct.trajectory.pytrajectory_res = dict(pytrajectory_res)
     print("pytrajectory_results Written to ct.trajectory.pytrajectory_res")
+    ipydex.IPS()
 
     return
 
@@ -887,7 +910,7 @@ def convert_container_res_to_splines(ct, traj_label):
     print("Trajectories Written to ct.trajectory.parallel_res")
 
 
-def load_tracking_results(ct, file_names):
+def load_tracking_results(ct, directory, file_names):
     '''loads x_closed_loop , u_closed_loop, k_matrix ...
     results will be saved in ct.tracking.tracking_res['traj_label']['x_closed_loop']
     (a dictionary with traj_labels as keys, and values are dictionaries with keys :
@@ -897,6 +920,8 @@ def load_tracking_results(ct, file_names):
     
     ct: container of type Pendata
     file_names: a list containing the file_names to be loaded
+    
+    TODO: add directory
     '''
     # provide a dictionary for the results to be saved to  :
     traj_labels = []
@@ -914,25 +939,117 @@ def load_tracking_results(ct, file_names):
     for indx, file_name in enumerate(file_names):
         tmp = file_name.split("_")
         if tmp[0] == "x":
-            key = "x_closed_loop"
+            deviation= tmp[4]
+            key = "x_closed_loop"+ deviation
         elif tmp[0] == "u":
-            key = "u_closed_loop"
+            key = "u_closed_loop"+ deviation
         elif tmp[0] == "K":
-            key = "K_matrix"
+            key = "K_matrix"+ deviation
         else:
             msg = 'the file_name{} is not in a correct format '.format(
                 file_name)
             print(msg)
         # savet the results to the dictionary
         traj_label = traj_labels[indx]
-        value= np.load(file_name)
-        ct.tracking.tracking_res[traj_label].update({key: value })
-        
+       
+        value = np.load( os.path.join(directory, file_name))
+        ct.tracking.tracking_res[traj_label].update({key: value})
 
     return
-
 
 
 def save_tracking_results_to_contianer(ct, traj_label, x_closed_loop):
     ct.tracking.tracking_res[traj_label]['x_closed_loop'] = x_closed_loop
     return
+
+
+def createFolder(directory):
+    '''creats a subfolder in a folder your run the program
+       with the name directory
+    '''
+    try:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+    except OSError:
+        print('Error: Creating directory. ' + directory)
+
+
+def np_save(directory, file_name, data):
+    ''' saves the data(numpy.array) in a folder specified with
+        directory and with the name file_name
+        directory will be created so you should just specify 
+        a name for it !  if it already exists no new folder will be 
+        created!
+        ======= 
+        INPUTS:
+        directory : string ,  name of the directory to be created
+        file_name : string ,  name of the file
+        data :      np.array, your data to be saved   
+    '''
+    #create a folder for file to be saved to:
+    createFolder(directory)
+
+    # save data to a file
+    np.save(os.path.join(directory, file_name), data)
+
+    return
+
+
+def generate_sys_model_with_parameter_deviation(ct,
+                                              param_tol_dict=None,
+                                              default_tol=0.05):
+    '''system modeling with parameter deviation desired!
+       
+       ------
+       INPUTS:
+       ct : container of type pendata
+       param_tol_dict : dict , a dictionary with the name of the parameters as keys
+       and desired tolerance as values, if not given it uses default_tol for every 
+       parameters
+    '''
+    from sys_model import system_model_generator
+
+    param_values = ct.parameter_values
+    param_keys = [
+        'l1', 'l2', 'l3', 'a1', 'a2', 'a3', 'm0', 'm1', 'm2', 'm3', 'J0', 'J1',
+        'J2', 'J3', 'd1', 'd2', 'd3', 'g', 'f'
+    ]
+    param_dict = dict(zip(param_keys, param_values))
+
+    if not isinstance(param_tol_dict, dict):
+        flag=False
+        param_tol_dict = dict([(param_key, default_tol if param_key is not 'g'
+                                and param_key is not 'f'
+                                and param_key is not 'J0' else 0)
+                               for param_key in param_keys])
+
+    keys, values = zip(*param_tol_dict.items())
+    for key in keys:
+
+        new_value = param_dict[key] + param_tol_dict[key]
+        param_dict.update({key: new_value})
+
+    # keys, values = zip(*param_dict.items())
+    # param_with_deviation = values
+
+    # ct.model.param_with_deviation = param_with_deviation
+    ct.model.param_dict_with_deviation= param_dict
+    ct.model.param_tol_dict = param_tol_dict
+    ct.model.default_tol= str(default_tol) if flag== False else 'variable'
+    system_model_generator(ct, param_deviation=True)
+
+    return
+
+    def generate_file_names(direcotry):
+        '''generates a list of all numpy(.npy) files in a directory specified
+
+        INPUTS:
+        directory: string , name of the directory
+
+        OUTPUT: list of tupels containing (directory, file_name)
+        '''
+        os.chdir("/{}".format(direcotry))
+        file_names_list=[]
+        for file in glob.glob("*.npy"):
+            file_names_list.append((direcotry, file))
+

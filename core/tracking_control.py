@@ -64,7 +64,7 @@ import cfg
 # ipydex.activate_ips_on_exception()
 
 
-def parallelized_tracking_control(ct, pool_size=3):
+def parallelized_tracking_control(ct, pool_size=4):
     '''
 
     - linearize the system at top equilibrium point
@@ -84,13 +84,13 @@ def parallelized_tracking_control(ct, pool_size=3):
     ct.trajectory.parallel_res = dict(
         [(traj_key, ()) for traj_key in traj_keys])
 
-    # multi_args=[(ct, traj_key) for traj_key in traj_keys]
+    multi_args=[(ct, traj_key) for traj_key in traj_keys]
     processor_pool = Pool(pool_size)
     # ipydex.IPS()
-    processor_pool.map(_tracking_control, [traj_keys[1]])
+    processor_pool.map(_tracking_control , [traj_key for traj_key in traj_keys[:2]])
 
     # Process_jobs=[]
-    # for key in traj_keys :
+    # for key in [traj_keys[0]] :
     #     p= multiprocessing.Process(target= _tracking_control, args=(key,))
     #     Process_jobs.append(p)
     #     p.start()
@@ -120,17 +120,23 @@ def parallelized_tracking_control(ct, pool_size=3):
     return
 
 
-def _tracking_control(arg_tupel):
+def _tracking_control(traj_key, division= 'parameter'):
     '''
     arg_tupel : tupel contains (ct, traj_label)
-    '''
+
+    divsion : could be one of these key words :
+              parameter : tracking with model parameter divison
+              boundry_value : tracking with boundry_value division
+              both= parameter and boundry_value divisions
+              None= with no division  
+    '''  
 
     # ct = arg_tupel[0]
     ct = cfg.pendata
     # print(dir(ct.tracking))
     # traj_label = arg_tupel[1]
-    traj_label = arg_tupel
-
+    traj_label = traj_key
+    print('tracking for traj_label: {} started !'.format(traj_label))
     final_time = float(traj_label.split("_")[1])
 
     # dynamic_symbs = ct.model.dynamic_symbs
@@ -146,8 +152,13 @@ def _tracking_control(arg_tupel):
     dynamic_symbs = ct.model.dynamic_symbs
     q = ct.model.q
     u = ct.model.q
-    fx = ct.model.fx
-    gx = ct.model.gx
+
+    if division == 'parameter' or 'both' :
+        fx= ct.model.fx_with_division 
+        gx= ct.model.gx_with_division 
+    else:
+        fx = ct.model.f
+        gx = ct.model.gx
 
     # defining equilibrium point for system linearization at top
     x0 = [0.0 for i in range(2 * len(q))]
@@ -196,7 +207,7 @@ def _tracking_control(arg_tupel):
     print(
         '========================Riccati differential equations========================'
     )
-    print('Integrating riccati differential equations to find P matrix :')
+    print('Integrating riccati differential equations for {}:'.format(traj_label))
     print(
         '=============================================================================='
     )
@@ -207,8 +218,9 @@ def _tracking_control(arg_tupel):
         tvec[::-1],
         args=(A_func, B_func, Q, R, dynamic_symbs, traj_label))
 
-    with open('P_matrix_' + label + traj_label + '.pkl', 'wb') as file:
-        dill.dump(P, file)
+
+    # with open('P_matrix_' + label + traj_label + '.pkl', 'wb') as file:
+    #     dill.dump(P, file)
     '''
     with open('P_matrix_'+ label+traj_label+'.pkl', 'rb') as file:
             P = dill.load(file)
@@ -217,24 +229,36 @@ def _tracking_control(arg_tupel):
     # finding gain k for Tracking :
     print('\n \n')
     print('======================== gain matrix ========================')
-    print('generating gain_matrix using P')
+    print('generating gain_matrix for {} '.format(traj_label))
     Psim = P[::-1]
     K_matrix = generate_gain_matrix(R, B_func, Psim, tvec, dynamic_symbs,
                                     traj_label)
     print('gain matrix is ready!')
 
     # saving K_matrix in a numpy file
-    np.save('K_matrix' + '_' + label + '_' + traj_label + '_final_time_' +
-            str(final_time) + '.npy', K_matrix)
+    file_name_k = 'K_matrix' +'_division_' + division + '_' + label + '_' + traj_label+ '.npy'
+    np_save(traj_label,file_name_k, K_matrix)
 
-    # ipydex.IPS()
+    # np.save('K_matrix' + '_' + label + '_' + traj_label+ '.npy', K_matrix)
 
-    # finding states of the system using  K_matrix :
 
-    xdot_func = sympy_states_to_func()
+    # extend K-matrix and tvec for another 2 seconds :
+    step=tvec[1]-tvec[0]
+    extend_time= [tvec[-1]+i*step for i in range(1, 2*frames_per_sec)]
+    sim_time= np.array(tvec.tolist() + extend_time)
+    
+    extend_k=[K_matrix[-1].tolist() for i in range(1, 2*frames_per_sec) ]
+    K_matrix_extended= np.array(K_matrix.tolist()+ extend_k)
+    
+
+
+    # converting sympy to funcs :
+    model_division= True if division== 'parameter' or 'both' else False
+    xdot_func = sympy_states_to_func(model_with_param_division=model_division)
+
     print('\n \n')
     print('======================== x_closed_loop ========================')
-    print('integrating to find x_closed_loop')
+    print('integrating to find x_closed_loop for {}'.format(traj_label))
 
     # xa mit Abweichung !
     #xa = [0.0] + [np.pi/2
@@ -244,17 +268,20 @@ def _tracking_control(arg_tupel):
                   for i in range(len(q) - 1)] + [0.0 for i in range(len(q))]
 
     x_closed_loop = odeint(
-        ode_function, xa, tvec, args=(xdot_func, K_matrix, tvec, traj_label))
+        ode_function, xa, sim_time, args=(xdot_func, K_matrix_extended, sim_time, traj_label))
+
+    u_closed_loop= np.array(ct.tracking.tracking_res[traj_label]['ucl'])    
 
     # x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
 
     # saving x_closed_loop in a numpy file
-    np.save('x_closed_loop' + '_' + label + '_' + traj_label + '.npy',
-            x_closed_loop)
-
-    np.save('u_closed_loop' + '_' + label + '_' + traj_label + '.npy',
-            np.array(ct.tracking.tracking_res[traj_label]['ucl']))
-
+    x_cl_file_name='x_closed_loop' + '_division_' + division + '_' + label + '_' + traj_label + '.npy'
+    u_cl_file_name='u_closed_loop' + '_division_' + division + '_' + label + '_' + traj_label + '.npy'
+    
+    np_save(traj_label, x_cl_file_name, x_closed_loop)
+    np_save(traj_label, u_cl_file_name, u_closed_loop )
+    
+   
     # returning the results :
     # ct.tracking.tracking_res[traj_label].update({
     #     'x_closed_loop': x_closed_loop
