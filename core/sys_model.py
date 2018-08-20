@@ -219,7 +219,7 @@ def system_model_generator(ct, param_deviation=False):
     # storing system model as binary file to be used later
 
     param_tol_dict = ct.model.param_tol_dict if param_deviation else None
-    default_tol= ct.model.default_tol if param_deviation else 'zero'
+    default_tol= ct.model.default_tol if param_deviation else '0.0'
 
     sys_model = {
         'fx': fx,
@@ -233,12 +233,17 @@ def system_model_generator(ct, param_deviation=False):
         'default_tol': default_tol
     }
 
-    if param_deviation == True:
-        model_name = 'sys_model_' + 'with_param_deviation_'+ default_tol +'_'+ label + '.pkl'
-    else:
-        model_name = 'sys_model_' + label + '.pkl'
 
-    with open(model_name, 'wb') as file:
-        dill.dump(sys_model, file)
+
+
+    if param_deviation == True:
+        model_file_name= ct.model.model_file_name
+
+    else:
+        model_file_name= 'sys_model_' + 'without_param_deviation_'+ label + '.pkl'    
+
+    dump_model(model_file_name, sys_model)
+
+    
 
     # ipydex.IPS()

@@ -39,6 +39,7 @@ from myfuncs import load_sys_model
 from myfuncs import load_traj_splines
 from myfuncs import load_pytrajectory_results
 from myfuncs import generate_sys_model_with_parameter_deviation
+from myfuncs import parallelized_model_generator
 from myplots import myplot
 
 # from traj_DRICON import trajectory_generator
@@ -55,24 +56,60 @@ max_time = 2
 Pen_Container_initializer(number_of_pendulums)
 # modeling the system with kanes' Method
 # system_model_generator(cfg.pendata)
-generate_sys_model_with_parameter_deviation(cfg.pendata,default_tol=0.03)
 
-# load_sys_model(cfg.pendata)
-# load_sys_model(cfg.pendata, model_with_deviation=True)
-
-# generating trajectory with pytrajectory
-# trajectory_generator(cfg.pendata, max_time)
-
+tol_dicts = [{
+    'l1': 0.01
+}, {
+    'l2': 0.01
+}, {
+    'l3': 0.01
+}, {
+    'a1': 0.01
+}, {
+    'a2': 0.01
+}, {
+    'a3': 0.01
+}, {
+    'm0': 0.01
+}, {
+    'm1': 0.01
+}, {
+    'm2': 0.01
+}, {
+    'm3': 0.01
+}, {
+    'J0': 0.01
+}, {
+    'J1': 0.01
+}, {
+    'J2': 0.01
+}, {
+    'J3': 0.01
+}, {
+    'd1': 0.01
+}, {
+    'd2': 0.01
+}, {
+    'd3': 0.01
+}, {
+    'g': 0.01
+}]
+cfg.pendata.model.tol_dicts= tol_dicts
+# generate_sys_model_with_parameter_deviation(param_tol_dict=tol_dicts[0])
+# parallelized_model_generator(tol_dicts)
+# # # load_sys_model(cfg.pendata, model_without_param_deviation=True)
+# load_sys_model(cfg.pendata, param_tol_dicts=tol_dicts)
+# # # generating trajectory with pytrajectory
+# # # trajectory_generator(cfg.pendata, max_time)
 # label = cfg.pendata.label
 # pfname = 'swingup_splines_' + label + '.pcl'
 # # load_traj_splines(cfg.pendata, pfname)
 # load_pytrajectory_results(cfg.pendata, pfname)
 
-# # tracking control of the time varying linear system
-# parallelized_tracking_control(cfg.pendata, pool_size=2)
+# # # # # # # # # # tracking control of the time varying linear system
+# parallelized_tracking_control(cfg.pendata, pool_size=4)
 
-# # myplot(cfg.pendata)
-# # ipydex.IPS()
+myplot(cfg.pendata)
 
 # visualizing the results :
 # visualization(cfg.pendata, mode='simulation', max_time=max_time)

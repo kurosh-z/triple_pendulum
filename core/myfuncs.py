@@ -22,6 +22,8 @@ To Do :
 #=============================================================
 import os, sys, glob
 import logging
+from multiprocessing import Pool
+import multiprocessing
 
 #=============================================================
 # External Python modules
@@ -580,7 +582,7 @@ def generate_gain_matrix(R, B_func, P, Vect, dynamic_symbs, traj_label):
 
 
 # converting symbolic state equations to functions
-def sympy_states_to_func(model_with_param_deviation=False):
+def sympy_states_to_func(fx, gx):
     '''it converts symbolic state equations to functions
 
     ATTENTION :
@@ -601,12 +603,6 @@ def sympy_states_to_func(model_with_param_deviation=False):
     '''
 
     dynamic_symbs = cfg.pendata.model.dynamic_symbs
-    if model_with_param_deviation:
-        fx = cfg.pendata.model.fx_with_deviation
-        gx = cfg.pendata.model.gx_with_deviation
-    else:
-        fx = cfg.pendata.model.fx
-        gx = cfg.pendata.model.gx
 
     u = dynamic_symbs[-1]
     num_states = len(dynamic_symbs) - 1
@@ -706,7 +702,7 @@ def ode_function(x,
     elif mode == 'Open_loop':
         inputs = us
     #storing inputs in ucl
-    cfg.pendata.tracking.tracking_res[traj_label]['ucl'].append(*inputs)
+    # cfg.pendata.tracking.tracking_res[traj_label]['ucl'].append(*inputs)
     state = x
 
     # logging.debug('us: %s', us)
@@ -719,6 +715,34 @@ def ode_function(x,
     # logging.debug('xdot : %s ', xdot)
 
     return xdot
+
+
+def calculate_u_cl(ct,x_cl,k_matrix, tvec, traj_label):
+    ''' calculates u_cl from x_cl
+        deltax = x-xs
+        delta_u = (-1) * k.T.dot(delta_x)
+        u_cl = us + delta_u
+    '''
+    cs_ret = cfg.pendata.trajectory.parallel_res[traj_label]
+
+    u_cl= []
+    for idx, x in enumerate(x_cl) :
+
+        t=tvec[idx]
+        xs = cs_ret[0](t)
+        us = cs_ret[1](t)
+        k= k_matrix[idx, :]
+
+        delta_x = x - xs
+        delta_u = (-1) * k.T.dot(delta_x)
+        u = us + delta_u
+        u_cl.append(u)
+
+
+    # ct.tracking.tracking_res[traj_label].update({'ucl': np.array(u_cl)})
+
+    return np.array(u_cl)
+
 
 
 def generate_position_vector_func(In_frame, origin, point, dynamic_variables):
@@ -814,52 +838,253 @@ def array_compare(a, b, tol=1e-6):
     return delta, max_diff
 
 
-def load_sys_model(ct, model_with_deviation=False):
-    '''Loading system model from pickle file and 
-       save it in pendata.model
-    ***ATTENTION:
-        frames could not be loaded ! for visualization 
-        you should still run system_model_generator
+
+def parallelized_model_generator(param_tol_dicts, pool_size=4):
+    '''multiple model generator at the same time :
+       param_tol_dicts : a list containing param_tol_dict 
+
     '''
-    label = ct.label
-    if model_with_deviation:
-        file_name = 'sys_model_' + 'with_param_deviation_' + label + '.pkl'
-    else:
-        file_name = 'sys_model_' + label + '.pkl'
-
-    with open(file_name, 'rb') as file:
-        sys_model = dill.load(file)
-
-    # saving modle in ct.model
-    ct.model.q = sys_model['q']
-    ct.model.qdot = sys_model['qdot']
-    ct.model.qdd = sys_model['qdd']
-    ct.model.dynamic_symbs = sys_model['dynamic_symbs']
-
-    if model_with_deviation:
-        ct.model.param_dict_with_deviation = sys_model['param_dict']
-        ct.model.fx_with_deviation = sys_model['fx']
-        ct.model.gx_with_deviation = sys_model['gx']
-        print(
-            'system model with deviation is loaded to ct.model.[fx / gx /pram_dict]_with_deviation'
-        )
-
-    else:
-
-        ct.model.param_dict = sys_model['param_dict']
-        ct.model.fx = sys_model['fx']
-        ct.model.gx = sys_model['gx']
-        print('system model is loaded to ct.model')
+    processor_pool = Pool(pool_size)
+    processor_pool.map(generate_sys_model_with_parameter_deviation , param_tol_dicts )
 
     return
 
 
-def load_traj_splines(ct, pfname):
+
+
+def generate_sys_model_with_parameter_deviation(param_tol_dict=None, default_tol=0.01):
+    '''system modeling with parameter deviation desired!
+       
+       ------
+       INPUTS:
+       param_tol_dict : dict , a dictionary with the name of the parameters as keys
+       and desired tolerance as values, if not given it uses default_tol for every 
+       parameters
+    '''
+    from sys_model import system_model_generator
+    ct=cfg.pendata
+    label=ct.label
+
+    param_values = ct.parameter_values
+    param_keys = [
+        'l1', 'l2', 'l3', 'a1', 'a2', 'a3', 'm0', 'm1', 'm2', 'm3', 'J0', 'J1',
+        'J2', 'J3', 'd1', 'd2', 'd3', 'g', 'f'
+    ]
+    param_dict = dict(zip(param_keys, param_values))
+
+    flag=True
+    if not isinstance(param_tol_dict, dict):
+        flag = False
+        param_tol_dict = dict([(param_key, default_tol if param_key is not 'g'
+                                and param_key is not 'f'
+                                and param_key is not 'J0' else 0)
+                               for param_key in param_keys])
+
+    keys, values = zip(*param_tol_dict.items())
+
+    for key in keys:
+        
+        new_value = param_dict[key] *(param_tol_dict[key] + 1)
+        param_dict.update({key: new_value})
+
+    if flag == True :
+        model_name = ""
+        keys, values= zip(*param_tol_dict.items())
+        for key in keys :
+            model_name += str(key)
+        model_name=model_name+'_'    
+        for value in values :
+            model_name += str(value)
+
+
+    else :
+        model_name= 'default_tol_'+ str(default_tol)
+
+    model_file_name= 'sys_model_' + 'with_param_deviation_'+ model_name +'_'+ label + '.pkl'
+
+
+    # ct.model.param_with_deviation = param_with_deviation
+    ct.model.param_dict_with_deviation = param_dict
+    ct.model.param_tol_dict = param_tol_dict
+    ct.model.default_tol = str(default_tol) if flag == False else 'variable'
+    ct.model.model_file_name= model_file_name
+    system_model_generator(ct, param_deviation=True)
+
+    return
+
+
+def dump_model(model_file_name,data):
+    ''' dumps model in a folder named: sys_models
+    
+    '''
+    current_path = os.getcwd()
+    current_dir = current_path.split('/')[-1]
+    if current_dir == 'core':
+        os.chdir('..')
+        createFolder('sys_models')
+        os.chdir('sys_models')
+    elif current_dir == 'triple_pendulum':
+        createFolder('sys_models')
+        os.chdir('sys_models')
+
+    with open(model_file_name, 'wb') as file:
+        dill.dump(data, file)
+    # back to the folder we started form :
+    os.chdir(current_path)
+
+    return
+
+def generate_model_names_form_tol_dict(param_tol_dicts):
+    ''' generates model_names from a given tol_dicts
+    '''
+    model_names=[]
+    for param_tol_dict in param_tol_dicts:
+        keys, values = zip(*param_tol_dict.items())
+        model_name = ""
+        for key in keys :
+            model_name += str(key)
+        model_name += '_'     
+        for value in values :
+            model_name += str(value)
+        model_names.append(model_name)   
+
+    return model_names     
+
+
+
+def load_sys_model(ct, model_without_param_deviation=None, deviation_percentage=None, param_tol_dicts=None):
+    '''Loading system model from pickle file and 
+       save it in pendata.model
+       it also updates model_list with each model loaded !
+    ***ATTENTION:
+        frames could not be loaded ! therefore for visualization 
+        you should still run system_model_generator
+    '''
+    label=ct.label
+    if isinstance(param_tol_dicts, list):
+        model_file_names=[]
+        model_names=[]
+        for param_tol_dict in param_tol_dicts:
+            keys, values = zip(*param_tol_dict.items())
+            model_name = ""
+            for key in keys :
+                model_name += str(key)
+            model_name += '_'     
+            for value in values :
+                model_name += str(value)
+            model_names.append(model_name)    
+            model_file_name= 'sys_model_' + 'with_param_deviation_'+ model_name +'_'+ label + '.pkl'
+            model_file_names.append(model_file_name)
+
+    elif deviation_percentage :
+        model_name= 'default_tol_'+ str(deviation_percentage)
+        model_file_names= ['sys_model_' + 'with_param_deviation_'+ model_name +'_'+ label + '.pkl']
+
+    elif model_without_param_deviation :
+        model_file_names=['sys_model_' + 'without_param_deviation_'+ label + '.pkl']
+
+    # go to the directory sys_models and load files
+    current_path = os.getcwd()
+    current_dir = current_path.split('/')[-1]
+    if current_dir == 'core':
+        os.chdir('..')
+        os.chdir('sys_models')
+    elif current_dir == 'triple_pendulum':
+        os.chdir('sys_models')
+
+    # check if model is already exist !
+    
+    if not hasattr(ct.model, 'models_with_tol_dicts'):
+        ct.model.models_with_tol_dicts={}
+        
+    if not hasattr(ct.model, 'models_with_default_tol'):
+        ct.model.models_with_default_tol={}
+        
+    
+    if not  ('model_list' in ct.model.models_with_tol_dicts) :
+        ct.model.models_with_default_tol.update({'model_list':[]})
+        
+    if not  ('model_list' in ct.model.models_with_tol_dicts):
+        ct.model.models_with_tol_dicts.update({'model_list':[]})
+
+    # loop throught the file names and load files :
+    
+    count=0
+    for data_name in model_file_names:
+        
+        with open(data_name, 'rb') as file:
+            sys_model = dill.load(file)
+        
+        if model_without_param_deviation:
+            ct.model.param_dict = sys_model['param_dict']
+            ct.model.fx = sys_model['fx']
+            ct.model.gx = sys_model['gx']
+            ct.model.model_names_list= ['original']
+            print('model without param deviation is stored')
+
+        elif deviation_percentage:
+            
+            key= 'default_tol_'+ str(deviation_percentage)
+            value= dict([('param_dict', sys_model['param_dict']),
+                      ('fx', sys_model['fx']), ('gx', sys_model['gx']),
+                      ('default_tol', sys_model['default_tol'])])
+                      
+            
+            ct.model.models_with_default_tol.update({key: value})
+            ct.model.models_with_default_tol['model_list'].append(key)
+            print('model with default tol is stored')
+            
+
+        elif param_tol_dicts :
+            temp= data_name.split("_")
+            model_name= temp[5] + "_" + temp[6]
+            key= model_name
+            value= dict([('param_dict', sys_model['param_dict']),
+                      ('fx', sys_model['fx']), ('gx', sys_model['gx']),
+                      ('param_tol_dict', sys_model['param_tol_dict'])])
+            ct.model.models_with_tol_dicts.update({key: value})
+            ct.model.models_with_tol_dicts['model_list'].append(key)
+            count += 1
+                
+   
+    ct.model.q= sys_model['q']
+    ct.model.qdot= sys_model['qdot']
+    ct.model.qdd= sys_model['qdd']
+    ct.model.dynamic_symbs= sys_model['dynamic_symbs']
+    
+    print('{} models with tol_dict is stored'.format(count))
+    # go back  to the root !
+    os.chdir(current_path)
+    
+    return 
+
+
+
+
+
+
+def load_traj_splines(ct, pfname,traj_lable_list=None):
     '''Loades splines from .pkl file containing the reults
-    ParallelizedTP and saves them to ct.trajectory.parallel_res   
+    ParallelizedTP and saves them to ct.trajectory.parallel_res  
+    you may list your desired trajectories in traj_label list ,
+    if you want to convert a specific trajectory to traj_splines
+    (it saves time not to convert all the trajectory results !) 
+     
     '''
     with open(pfname, 'rb') as pfile:
         trajectories = dill.load(pfile)
+
+    if isinstance(traj_lable_list, list):
+        temp=dict(trajectories)
+        traj_labels, values=zip(*temp.items())
+        desired_trajectories=[]
+        for traj_label in traj_labels:
+            for desired_traj_label in traj_lable_list :
+                if traj_label == desired_traj_label :
+                    traj= temp[traj_label]
+                    desired_trajectories.append((traj_label, traj))
+        trajectories=desired_trajectories
+
 
     parallel_res = []
     for trajectory in trajectories:
@@ -886,12 +1111,11 @@ def load_pytrajectory_results(ct, pfname):
 
     ct.trajectory.pytrajectory_res = dict(pytrajectory_res)
     print("pytrajectory_results Written to ct.trajectory.pytrajectory_res")
-    ipydex.IPS()
 
     return
 
 
-def convert_container_res_to_splines(ct, traj_label):
+def convert_container_res_to_splines(ct, traj_label, model_key):
     ''' Converts containerized results of pytrajectory 
         to callabel functions of xx and uu
 
@@ -907,54 +1131,48 @@ def convert_container_res_to_splines(ct, traj_label):
     traj_spline = aux.unpack_splines_from_containerdict(cont_dict)
     xxf, uuf = aux.get_xx_uu_funcs_from_containerdict(cont_dict)
     ct.trajectory.parallel_res[traj_label] = (xxf, uuf)
-    print("Trajectories Written to ct.trajectory.parallel_res")
+    print("{} - {} : Trajectories Written to ct.trajectory.parallel_res".format(traj_label,model_key))
 
 
-def load_tracking_results(ct, directory, file_names):
+def load_tracking_results(ct, file_names_dict):
     '''loads x_closed_loop , u_closed_loop, k_matrix ...
     results will be saved in ct.tracking.tracking_res['traj_label']['x_closed_loop']
-    (a dictionary with traj_labels as keys, and values are dictionaries with keys :
+    (a dictionary with "seed_time"  as keys, and values are dictionaries with keys :
     x_closed_loop, u_closed_loop and so an )
 
     INPUTS : 
     
     ct: container of type Pendata
-    file_names: a list containing the file_names to be loaded
+    file_names_dict: 
     
-    TODO: add directory
+    TODO: 
     '''
     # provide a dictionary for the results to be saved to  :
-    traj_labels = []
-    for file_name in file_names:
-        tmp = file_name.split("_")
-        time = tmp[-1].split(".")[0] + "." + tmp[-1].split(".")[1]
-        tmp.remove(tmp[-1])
-        seed = tmp[-1]
-        traj_label = seed + "_" + time
-        traj_labels.append(traj_label)
+
+    # go to the direcotory where the files are :
+    current_path = os.getcwd()
+    current_dir = current_path.split('/')[-1]
+    if current_dir == 'core':
+        os.chdir('..')
+        os.chdir('trackig_results')
+    elif current_dir == 'triple_pendulum':
+        os.chdir('trackig_results')
+
+    seed_times, file_names = zip(*file_names_dict.items())
 
     ct.tracking.tracking_res = dict(
-        [(traj_label, {}) for traj_label in traj_labels])
+        [(seed_time, {}) for seed_time in seed_times])
 
-    for indx, file_name in enumerate(file_names):
-        tmp = file_name.split("_")
-        if tmp[0] == "x":
-            deviation= tmp[4]
-            key = "x_closed_loop"+ deviation
-        elif tmp[0] == "u":
-            key = "u_closed_loop"+ deviation
-        elif tmp[0] == "K":
-            key = "K_matrix"+ deviation
-        else:
-            msg = 'the file_name{} is not in a correct format '.format(
-                file_name)
-            print(msg)
-        # savet the results to the dictionary
-        traj_label = traj_labels[indx]
-       
-        value = np.load( os.path.join(directory, file_name))
-        ct.tracking.tracking_res[traj_label].update({key: value})
+    for seed_time in seed_times:
 
+        for file_label, file_name in file_names_dict[seed_time].iteritems():
+            directory = seed_time
+            key = file_label
+            value = np.load(os.path.join(directory, file_name))
+            ct.tracking.tracking_res[seed_time].update({key: value})
+
+    # return to the directory where we began !
+    os.chdir(current_path)
     return
 
 
@@ -987,69 +1205,99 @@ def np_save(directory, file_name, data):
         data :      np.array, your data to be saved   
     '''
     #create a folder for file to be saved to:
+    current_path = os.getcwd()
+    current_dir = current_path.split('/')[-1]
+    if current_dir == 'core':
+        os.chdir('..')
+        createFolder('trackig_results')
+        os.chdir('trackig_results')
+    elif current_dir == 'triple_pendulum':
+        createFolder('trackig_results')
+        os.chdir('trackig_results')
+
     createFolder(directory)
 
     # save data to a file
     np.save(os.path.join(directory, file_name), data)
 
+    # back to the directory where we started !
+    os.chdir(current_path)
     return
 
 
-def generate_sys_model_with_parameter_deviation(ct,
-                                              param_tol_dict=None,
-                                              default_tol=0.05):
-    '''system modeling with parameter deviation desired!
-       
-       ------
-       INPUTS:
-       ct : container of type pendata
-       param_tol_dict : dict , a dictionary with the name of the parameters as keys
-       and desired tolerance as values, if not given it uses default_tol for every 
-       parameters
+
+
+def read_tracking_results_from_directories(directories):
+    '''generates a list of all numpy(.npy) files in a directory specified
+       it spectes that the directories are in triple_pendulum/tracking_results
+    INPUTS:
+    directories: list of  strings , names of the directories
+    
     '''
-    from sys_model import system_model_generator
+    current_path = os.getcwd()
+    current_dir = current_path.split('/')[-1]
+    if current_dir == 'core':
+        os.chdir('..')
+        os.chdir('trackig_results')
+    elif current_dir == 'triple_pendulum':
+        os.chdir('trackig_results')
+    
 
-    param_values = ct.parameter_values
-    param_keys = [
-        'l1', 'l2', 'l3', 'a1', 'a2', 'a3', 'm0', 'm1', 'm2', 'm3', 'J0', 'J1',
-        'J2', 'J3', 'd1', 'd2', 'd3', 'g', 'f'
-    ]
-    param_dict = dict(zip(param_keys, param_values))
+    tracking_res= dict([(directory, {}) for directory in directories])
+    
+    for directory in directories:
+        os.chdir(directory)
+        
 
-    if not isinstance(param_tol_dict, dict):
-        flag=False
-        param_tol_dict = dict([(param_key, default_tol if param_key is not 'g'
-                                and param_key is not 'f'
-                                and param_key is not 'J0' else 0)
-                               for param_key in param_keys])
+        for file_name in glob.glob("*.npy"):
+            tmp= file_name.split('_')
+            
+            if tmp[0] == 'simulation':
+                res_type='simulation_time'
+                value = np.load(file_name)
+                tracking_res[directory].update({res_type: value})
+                
+            else :
+                if tmp[0] == 'K':
+                    res_type= 'k_matrix'
+                    deviation_type= tmp[3]
+                    model_key= tmp[4]+'_'+tmp[5]
+                    tx_key = tmp[7]+tmp[9]
+                    qr_key = tmp[11]
 
-    keys, values = zip(*param_tol_dict.items())
-    for key in keys:
+                elif tmp[0] == 'x' :
+                    res_type= 'x_cl'
+                    deviation_type= tmp[4] 
+                    model_key= tmp[5]+'_'+tmp[6]
+                    tx_key = tmp[8]+tmp[10]
+                    qr_key = tmp[12]   
+    
+                elif tmp[0] == 'u' :
+                    res_type= 'u_cl'
+                    deviation_type= tmp[4] 
+                    model_key= tmp[5]+'_'+tmp[6]
+                    tx_key = tmp[8]+tmp[10]
+                    qr_key = tmp[12]   
+    
+    
+                if not (res_type in tracking_res[directory] ):
+                    tracking_res[directory].update({res_type:{}})
+                if not (deviation_type in tracking_res[directory][res_type]):
+                    tracking_res[directory][res_type].update({deviation_type: {}})
+                if not ( model_key in tracking_res[directory][res_type][deviation_type]):
+                    tracking_res[directory][res_type][deviation_type].update({model_key :{}})
+                if not (tx_key in tracking_res[directory][res_type][deviation_type][model_key]):
+                    tracking_res[directory][res_type][deviation_type][model_key].update({tx_key :{}})
+                
+                value= np.load(file_name)
+                tracking_res[directory][res_type][deviation_type][model_key][tx_key].update({qr_key:value})
 
-        new_value = param_dict[key] + param_tol_dict[key]
-        param_dict.update({key: new_value})
+                
+        
+        # go back and search for files in another direcotry
+        os.chdir('..')
 
-    # keys, values = zip(*param_dict.items())
-    # param_with_deviation = values
+    #go back to the directory where we began
+    os.chdir(current_path)
 
-    # ct.model.param_with_deviation = param_with_deviation
-    ct.model.param_dict_with_deviation= param_dict
-    ct.model.param_tol_dict = param_tol_dict
-    ct.model.default_tol= str(default_tol) if flag== False else 'variable'
-    system_model_generator(ct, param_deviation=True)
-
-    return
-
-    def generate_file_names(direcotry):
-        '''generates a list of all numpy(.npy) files in a directory specified
-
-        INPUTS:
-        directory: string , name of the directory
-
-        OUTPUT: list of tupels containing (directory, file_name)
-        '''
-        os.chdir("/{}".format(direcotry))
-        file_names_list=[]
-        for file in glob.glob("*.npy"):
-            file_names_list.append((direcotry, file))
-
+    return tracking_res

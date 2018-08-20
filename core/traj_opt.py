@@ -75,9 +75,11 @@ def trajectory_generator(ct, max_time, constraints=None):
     ub = [0.0]
 
     a = 0
-    b = max_time- np.r_[0.25, 0.35, 0.45]
-    seed=[19,29]
-
+    b= [2]
+    # b = max_time- np.r_[0.25, 0.35, 0.45]
+    seed=[19,29,390]
+    # con = {0 : [-1.2, 1.2]}
+    con={}
 
     print('ready to start trajectory optimiztion !')
     print('xa', xa)
@@ -134,7 +136,7 @@ def trajectory_generator(ct, max_time, constraints=None):
 
     """
 
-    con = {}
+    
     # first_guess = {'seed': 25}
     # Parallelized :
 
@@ -158,6 +160,7 @@ def trajectory_generator(ct, max_time, constraints=None):
         poolsize=4,
         ff=pytraj_rhs,
         a=a,
+        b=b,
         xa=xa,
         xb=xb,
         ua=0,
@@ -165,12 +168,11 @@ def trajectory_generator(ct, max_time, constraints=None):
         use_chains=False,
         ierr=None,
         maxIt=6,
-        eps=0.32,
+        eps=0.3,
         kx=2,
         use_std_approach=False,
         seed=seed,
-        constraints=con,
-        b=b )
+        constraints=con)
 
 
 
