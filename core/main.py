@@ -33,7 +33,7 @@ from sys_model import system_model_generator
 from traj_opt import trajectory_generator
 from tracking_control import parallelized_tracking_control
 from pydy_viz import visualization
-from matplotlib_viz import pen_animation
+# from matplotlib_viz import pen_animation
 from myfuncs import sympy_states_to_func
 from myfuncs import load_sys_model
 from myfuncs import load_traj_splines
