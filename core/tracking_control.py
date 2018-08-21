@@ -87,15 +87,32 @@ def parallelized_tracking_control(ct, pool_size=4):
         [(traj_key, ()) for traj_key in traj_keys])
 
 
-    # constructing trackt_dict :
+    # constructing trackt_dict for both deviation:
+    t0=0.8
+    dev_percentage= 0.05
 
     traj_multiple_args= []
     model_names= ct.model.models_with_tol_dicts['model_list']
 
     for traj_key in traj_keys:
-        for model_type_label in model_names :
-            arg= dict([('traj_key', traj_key), ('deviation','parameter'), ('model_type_label',('model_with_tol_dict', model_type_label) )])
+        for model_type_label in model_names[7:10] :
+            arg = dict([('traj_key', traj_key), ('deviation', 'both'),
+                        ('model_type_label', ('model_with_tol_dict',
+                                              model_type_label)),
+                        ('boundry_deviation', (t0, dev_percentage))])
             traj_multiple_args.append(arg)
+
+    ipydex.IPS()        
+
+    # t0=0.8
+    # dev_percentage= 0.05
+
+    # traj_multiple_args= []
+    # for traj_key in traj_keys:
+    #     traj_arg= dict([('traj_key', traj_key), ('deviation','boundry'), ('boundry_deviation' , (t0, dev_percentage) )])
+    #     traj_multiple_args.append(traj_arg)
+
+
 
 
     processor_pool = Pool(pool_size)
@@ -103,7 +120,7 @@ def parallelized_tracking_control(ct, pool_size=4):
 
 
     # Process_jobs=[]
-    # for arg in  (traj_multiple_args[0], ):
+    # for arg in  traj_multiple_args:
     #     p= multiprocessing.Process(target= _tracking_control, args=(arg,))
     #     Process_jobs.append(p)
     #     p.start()
@@ -122,7 +139,7 @@ def _tracking_control(track_dict):
 
     'deviation' : could be one of these key words :
               parameter : tracking with model parameter divison
-              boundry_deviation : tracking with boundry_value deviation
+              boundry : tracking with boundry_value deviation
               both= parameter and boundry_value deviations
               None= with no deviation  
 
@@ -140,10 +157,10 @@ def _tracking_control(track_dict):
     traj_label= track_dict['traj_key']
     deviation= track_dict['deviation']
 
-    if (deviation == 'None' or deviation == 'boundry_deviation'):
+    if (deviation == 'None' or deviation == 'boundry'):
         fx= ct.model.fx
         gx= ct.model.gx
-        model_key= 'original'
+        model_key= 'original_00'    # we add _00 to match the naming convention !
         model_type= 'original'
 
     if (deviation  == 'parameter' or deviation == 'both') :
@@ -160,7 +177,7 @@ def _tracking_control(track_dict):
             gx= ct.model.models_with_tol_dicts[model_key]['gx']
             print('fx and gx for model with tol dict are loaded')
 
-    if (deviation == 'boundry_deviation' or deviation == 'both' ):
+    if (deviation == 'boundry' or deviation == 'both' ):
         boundry_deviation = track_dict['boundry_deviation']
         t0= boundry_deviation[0]
         x0_deviation = boundry_deviation[1]
@@ -175,8 +192,10 @@ def _tracking_control(track_dict):
     final_time = float(traj_label.split("_")[1])
     label = ct.label
 
+    Q_factor=1.0
+    R_factor=1.0
 
-    print('{} - {} : tracking started !'.format(traj_label, model_key))
+    print('{} - {} - {}_{} - {}_{} : tracking started !'.format(traj_label, model_key, t0, x0_deviation, Q_factor, R_factor))
 
 
 
@@ -188,11 +207,10 @@ def _tracking_control(track_dict):
 
     # linearization of model @ equilibrium point
     A, B = linearize_state_equ(fx, gx, dynamic_symbs, equilibrium_point)
-    print('{} - {} : linearized model is ready !'.format(traj_label, model_key))
+    print('{} - {} - {}_{} - {}_{} : linearized model is ready !'.format(traj_label, model_key, t0, x0_deviation, Q_factor, R_factor))
 
     # lqr control to find K (we need it as a boundry-value (Pe) for our tracking !)
-    Q_factor=1.0
-    R_factor=1.0
+
     Q = Q_factor *np.identity(2 * len(q))
     R = R_factor * np.identity(1)
 
@@ -216,7 +234,7 @@ def _tracking_control(track_dict):
     frames_per_sec = 240
     tvec = np.linspace(0.0, final_time, final_time * frames_per_sec)
 
-    print('{} - {} : Integrating riccati differential equations '.format(traj_label, model_key))
+    print('{} - {} - {}_{} - {}_{} : Integrating riccati differential equations '.format(traj_label, model_key, t0, x0_deviation, Q_factor, R_factor))
 
 
     P = odeint(
@@ -234,11 +252,11 @@ def _tracking_control(track_dict):
     '''
 
     # finding gain k for Tracking :
-    print('{} - {} : generating gain_matrix for '.format(traj_label, model_key))
+    print('{} - {} - {}_{} - {}_{} : generating gain_matrix for '.format(traj_label, model_key, t0, x0_deviation, Q_factor, R_factor))
     Psim = P[::-1]
     K_matrix = generate_gain_matrix(R, B_func, Psim, tvec, dynamic_symbs,
                                     traj_label)
-    print('{} - {} : gain matrix is ready!'.format(traj_label, model_key))
+    print('{} - {} - {}_{} - {}_{} : gain matrix is ready!'.format(traj_label, model_key, t0, x0_deviation, Q_factor, R_factor))
 
     # np.save('K_matrix' + '_' + label + '_' + traj_label+ '.npy', K_matrix)
 
@@ -260,34 +278,38 @@ def _tracking_control(track_dict):
     # converting sympy to funcs :
     xdot_func = sympy_states_to_func(fx, gx)
 
-    print('{} - {} : integrating to find x_closed_loop '.format(traj_label, model_key))
+    print('{} - {} - {}_{} - {}_{} : integrating to find x_closed_loop '.format(traj_label, model_key, t0, x0_deviation, Q_factor, R_factor))
 
     # check if we should consider deviation in boundry conditions
 
-    if (deviation == 'boundry_deviation' or deviation == 'both' ):
+    if (deviation == 'boundry' or deviation == 'both' ):
         x_on_traj= ct.trajectory.parallel_res[traj_label][0](t0)
-        xa= x0_deviation * x_on_traj
+        xa= (x_on_traj*(x0_deviation + 1)).tolist()
 
         # find the indx of array sim_time at whitch approximatly sim_time[idx] = t0
         temp= np.absolute(sim_time-t0)
         ind= np.unravel_index(np.argmin(temp, axis=None), temp.shape)[0]
         new_sim_time= sim_time[ind:]
-        
-        print('t0',t0)
-        print('x0', x0)
-        print('x0_deviation',x0_deviation)
-        print('x_on_traj',x_on_traj)
-        
+
+        print("t0", t0)
+        print("indx", ind)
+        print("xa_new", xa)
+        print("x0_deviation", x0_deviation)
+        print("x_on_traj" ,x_on_traj.tolist())
+
         # find x_closed_loop for desired deviation at desired time :
         x_closed_loop = odeint(
             ode_function,
             xa,
             new_sim_time,
-            args=(xdot_func, K_matrix_extended, sim_time, traj_label))        
-        
+            args=(xdot_func, K_matrix_extended, sim_time, traj_label))
+
         # form 0 to t0 add 0 to x_closed_loop (just to have a uniform results
-        # and in ploting it stresses the fact that we consider t0 as start point !) 
-        x_closed_loop = [0 for t in sim_time[:ind]] + [x_closed_loop[i] for i, t in enumerate(new_sim_time)]
+        # and in ploting it stresses the fact that we consider t0 as start point !)
+        x_closed_loop = np.array([
+            np.array([0 for index in 2 * range(len(q))])
+            for t in sim_time[:ind]
+        ] + [x_closed_loop[i] for i, t in enumerate(new_sim_time)])
 
 
 
@@ -302,6 +324,7 @@ def _tracking_control(track_dict):
             args=(xdot_func, K_matrix_extended, sim_time, traj_label))
 
 
+    print('{} - {} - {}_{} - {}_{} : integration for x_closed_loop finished '.format(traj_label, model_key, t0, x0_deviation, Q_factor, R_factor))
 
 
 
@@ -318,7 +341,7 @@ def _tracking_control(track_dict):
     np_save(traj_label, x_cl_file_name, x_closed_loop)
     np_save(traj_label, u_cl_file_name, u_closed_loop )
 
-    print('{} - {} : tracking  finished result are stored!'.format(traj_label, model_key))
+    print('{} - {} - {}_{} - {}_{} : tracking  finished result are stored!'.format(traj_label, model_key, t0, x0_deviation, Q_factor, R_factor))
     # returning the results :
     # ct.tracking.tracking_res[traj_label].update({
     #     'x_closed_loop': x_closed_loop

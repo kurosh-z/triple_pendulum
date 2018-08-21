@@ -65,14 +65,14 @@ def myplot(ct):
     #     ]
     # directories = ['19_1.9', '39_1.9']
     # directories = ['19_2', '29_2','390_2']
-    directories = ['19_1.6']
+    directories = ['39_1.9']
 
     # load all the tracking results from directories in directories :
     tracking_dict = read_tracking_results_from_directories(directories)
 
     # load trajectorie results and convert to splines
     label = ct.label
-    pfname= pfname4= 'swingup_splines__add_infos__19_1.6_splines_320_x0_None_x4_None_.pcl'
+    pfname= pfname1= 'swingup_splines__add_infos__39_1.9_splines_320_x0_None_x4_None_.pcl'
     load_traj_splines(ct, pfname)
     traj_dict = ct.trajectory.parallel_res
     print('trajectory resluts successfully loaded')
@@ -83,15 +83,17 @@ def myplot(ct):
 
     figs = []
 
-    deviation_list = ['parameter']
+    deviation_list = ['both']
     tol_dicts=ct.model.tol_dicts
-    model_types= generate_model_names_form_tol_dict(tol_dicts)[6:20]
+    model_types= generate_model_names_form_tol_dict(tol_dicts)[7:10]
+    # model_types=['original_00'] 
 
     # model_types=['m3_0.01']
-    xt_keys=['00']
+    # xt_keys=['00']
+    xt_keys= ['0.80.05']
     qr_keys= ['1.01.0']
 
-
+    ipydex.IPS()
     # deviation_percentage= '_0.01'
 
     idx=0
@@ -197,7 +199,7 @@ def myplot(ct):
 
                         #         # #ploting x :
                         ax_x.plot(tvec[::12], x[::12], 'ro', label='$q_0$')
-                        ax_x.plot(tvec2, x_traj[:, 0], color='blue', label='$q_1ref$')
+                        ax_x.plot(tvec2, x_traj[:, 0], color='blue', label='$q_0ref$')
 
                         ax_x.set_xlabel('Zeit (s)')
                         ax_x.set_ylabel('Position des Wagens')
@@ -207,7 +209,7 @@ def myplot(ct):
                         #         # # ploting x_dot :
                         ax_x_dot.plot(tvec[::12], x_dot[::12], 'ro', label='$\dot{q_0}$')
                         ax_x_dot.plot(
-                            tvec2, x_traj[:, 4], color='blue', label='$\dot{q_1}_{ref}$')
+                            tvec2, x_traj[:, 4], color='blue', label='$\dot{q_0}_{ref}$')
 
                         ax_x_dot.set_xlabel('Zeit (s)')
                         ax_x_dot.set_ylabel('Wagengeschwindigkeit (m/s)')
@@ -216,7 +218,7 @@ def myplot(ct):
 
                         #         # # ploting u :
                         ax_u.plot(
-                            tvec, u_cl, 'k', tvec[::12], u_cl[::12], 'ro', label='$u_cl$')
+                            tvec, u_cl, 'k', tvec[::12], u_cl[::12], 'bo', label='$u_cl$')
 
                         ax_u.set_xlabel('Zeit s')
                         ax_u.set_ylabel('Input ($m/s^2$)')
