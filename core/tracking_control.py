@@ -88,7 +88,7 @@ def parallelized_tracking_control(ct, pool_size=4):
 
 
     # constructing trackt_dict :
-    
+
     traj_multiple_args= []
     model_names= ct.model.models_with_tol_dicts['model_list']
 
@@ -96,7 +96,7 @@ def parallelized_tracking_control(ct, pool_size=4):
         for model_type_label in model_names :
             arg= dict([('traj_key', traj_key), ('deviation','parameter'), ('model_type_label',('model_with_tol_dict', model_type_label) )])
             traj_multiple_args.append(arg)
-    
+
 
     processor_pool = Pool(pool_size)
     processor_pool.map(_tracking_control , traj_multiple_args )
@@ -108,7 +108,7 @@ def parallelized_tracking_control(ct, pool_size=4):
     #     Process_jobs.append(p)
     #     p.start()
     #     p.join()
-    
+
 
     return
 
@@ -135,7 +135,7 @@ def _tracking_control(track_dict):
      *** (you dont need this wihtout boundry deviation)
 
      'QR_factor' : optional : tupel (Q_factor, R_factor)
-    '''  
+    '''
     ct= cfg.pendata
     traj_label= track_dict['traj_key']
     deviation= track_dict['deviation']
@@ -143,13 +143,13 @@ def _tracking_control(track_dict):
     if (deviation == 'None' or deviation == 'boundry_deviation'):
         fx= ct.model.fx
         gx= ct.model.gx
-        model_key= 'original'  
+        model_key= 'original'
         model_type= 'original'
 
     if (deviation  == 'parameter' or deviation == 'both') :
         model_type= track_dict['model_type_label'][0]
         model_key = track_dict['model_type_label'][1]
-        
+
         if model_type == 'model_with_default_tol':
             fx=ct.model.models_with_default_tol[model_key]['fx']
             gx=ct.model.models_with_default_tol[model_key]['gx']
@@ -166,18 +166,18 @@ def _tracking_control(track_dict):
         x0_deviation = boundry_deviation[1]
     else :
         t0=0
-        x0_deviation=0    
+        x0_deviation=0
 
-    # fiding other values 
+    # fiding other values
     dynamic_symbs = ct.model.dynamic_symbs
     q = ct.model.q
-    u = ct.model.q    
+    u = ct.model.q
     final_time = float(traj_label.split("_")[1])
     label = ct.label
 
 
     print('{} - {} : tracking started !'.format(traj_label, model_key))
-    
+
 
 
 
@@ -217,7 +217,7 @@ def _tracking_control(track_dict):
     tvec = np.linspace(0.0, final_time, final_time * frames_per_sec)
 
     print('{} - {} : Integrating riccati differential equations '.format(traj_label, model_key))
-  
+
 
     P = odeint(
         riccati_diff_equ,
@@ -248,10 +248,10 @@ def _tracking_control(track_dict):
     extend_time= [tvec[-1]+i*step for i in range(1, 2*frames_per_sec)]
     sim_time= np.array(tvec.tolist() + extend_time)
     np_save(traj_label, 'simulation_time', sim_time)
-    
+
     extend_k=[K_matrix[-1].tolist() for i in range(1, 2*frames_per_sec) ]
     K_matrix_extended= np.array(K_matrix.tolist()+ extend_k)
-    
+
     # saving K_matrix in a numpy file
     file_name_k = 'K_matrix' +'_deviation_' + deviation + '_' + model_key + '_t0_' + str(t0)+'_x0_'+ str(x0_deviation) + '_QR_'+str(Q_factor)+str(R_factor)+'_'+ label + '_' + traj_label+ '.npy'
     np_save(traj_label,file_name_k, K_matrix_extended)
@@ -262,36 +262,69 @@ def _tracking_control(track_dict):
 
     print('{} - {} : integrating to find x_closed_loop '.format(traj_label, model_key))
 
-    # xa mit Abweichung !
-    #xa = [0.0] + [np.pi/2
-    #             for i in range(len(q) - 1)] + [0 for i in range(len(q))]
+    # check if we should consider deviation in boundry conditions
 
-    xa = [0.0] + [np.pi
-                  for i in range(len(q) - 1)] + [0.0 for i in range(len(q))]
+    if (deviation == 'boundry_deviation' or deviation == 'both' ):
+        x_on_traj= ct.trajectory.parallel_res[traj_label][0](t0)
+        xa= x0_deviation * x_on_traj
 
-    x_closed_loop = odeint(
-        ode_function, xa, sim_time, args=(xdot_func, K_matrix_extended, sim_time, traj_label))
+        # find the indx of array sim_time at whitch approximatly sim_time[idx] = t0
+        temp= np.absolute(sim_time-t0)
+        ind= np.unravel_index(np.argmin(temp, axis=None), temp.shape)[0]
+        new_sim_time= sim_time[ind:]
+        
+        print('t0',t0)
+        print('x0', x0)
+        print('x0_deviation',x0_deviation)
+        print('x_on_traj',x_on_traj)
+        
+        # find x_closed_loop for desired deviation at desired time :
+        x_closed_loop = odeint(
+            ode_function,
+            xa,
+            new_sim_time,
+            args=(xdot_func, K_matrix_extended, sim_time, traj_label))        
+        
+        # form 0 to t0 add 0 to x_closed_loop (just to have a uniform results
+        # and in ploting it stresses the fact that we consider t0 as start point !) 
+        x_closed_loop = [0 for t in sim_time[:ind]] + [x_closed_loop[i] for i, t in enumerate(new_sim_time)]
+
+
+
+    else:
+        xa = [0.0] + [np.pi for i in range(len(q) - 1)
+                      ] + [0.0 for i in range(len(q))]
+
+        x_closed_loop = odeint(
+            ode_function,
+            xa,
+            sim_time,
+            args=(xdot_func, K_matrix_extended, sim_time, traj_label))
+
+
+
+
 
     # generate u_closed_loop
     u_closed_loop= calculate_u_cl(ct,x_closed_loop,K_matrix_extended, sim_time, traj_label)
-    # u_closed_loop= ct.tracking.tracking_res[traj_label]['ucl'] 
+    # u_closed_loop= ct.tracking.tracking_res[traj_label]['ucl']
 
     # x_open_loop= odeint(ode_function, xa, t, args=(xdot_func, K_matrix, t, 'Open_loop') )
 
     # saving x_closed_loop in a numpy file
     x_cl_file_name='x_closed_loop' + '_deviation_' + deviation +  '_' + model_key + '_t0_' + str(t0)+'_x0_'+ str(x0_deviation) + '_QR_'+str(Q_factor)+str(R_factor) + '_'+ label + '_' + traj_label + '.npy'
     u_cl_file_name='u_closed_loop' + '_deviation_' + deviation +  '_' + model_key + '_t0_' + str(t0)+'_x0_'+ str(x0_deviation) + '_QR_'+str(Q_factor)+str(R_factor) + '_'+label + '_' + traj_label + '.npy'
-    
+
     np_save(traj_label, x_cl_file_name, x_closed_loop)
     np_save(traj_label, u_cl_file_name, u_closed_loop )
-    
+
     print('{} - {} : tracking  finished result are stored!'.format(traj_label, model_key))
     # returning the results :
     # ct.tracking.tracking_res[traj_label].update({
     #     'x_closed_loop': x_closed_loop
     # }
     # save_tracking_results_to_contianer(ct, traj_label,x_closed_loop)
-        
+
     # print(ct.tracking.tracking_res[traj_label])
     # ct.tracking.tvec = tvec
     # ct.tracking.tracking_res[traj_label].update({'P': P})

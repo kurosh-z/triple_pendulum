@@ -65,14 +65,14 @@ def myplot(ct):
     #     ]
     # directories = ['19_1.9', '39_1.9']
     # directories = ['19_2', '29_2','390_2']
-    directories = ['29_2']
+    directories = ['19_1.6']
 
     # load all the tracking results from directories in directories :
     tracking_dict = read_tracking_results_from_directories(directories)
 
     # load trajectorie results and convert to splines
     label = ct.label
-    pfname = 'swingup_splines_' + label + '.pcl'
+    pfname= pfname4= 'swingup_splines__add_infos__19_1.6_splines_320_x0_None_x4_None_.pcl'
     load_traj_splines(ct, pfname)
     traj_dict = ct.trajectory.parallel_res
     print('trajectory resluts successfully loaded')

@@ -99,14 +99,25 @@ cfg.pendata.model.tol_dicts= tol_dicts
 # parallelized_model_generator(tol_dicts)
 # # # load_sys_model(cfg.pendata, model_without_param_deviation=True)
 # load_sys_model(cfg.pendata, param_tol_dicts=tol_dicts)
-# # # generating trajectory with pytrajectory
-# # # trajectory_generator(cfg.pendata, max_time)
-# label = cfg.pendata.label
-# pfname = 'swingup_splines_' + label + '.pcl'
-# # load_traj_splines(cfg.pendata, pfname)
-# load_pytrajectory_results(cfg.pendata, pfname)
+# # # # generating trajectory with pytrajectory
+# # # # trajectory_generator(cfg.pendata, max_time)
 
-# # # # # # # # # # tracking control of the time varying linear system
+
+# # label = cfg.pendata.label
+# # pfname = 'swingup_splines_' + label + '.pcl'
+# # # load_traj_splines(cfg.pendata, pfname)
+
+# # list of best splines to be loaded
+# pfname1= 'swingup_splines__add_infos__39_1.9_splines_320_x0_None_x4_None_.pcl'
+# pfname2= 'swingup_splines__add_infos__19_1.8_splines_320_x0_None_x4_None_.pcl'
+# pfname3= 'swingup_splines__add_infos__19_1.7_splines_160_x0_None_x4_None_.pcl'
+# pfname4= 'swingup_splines__add_infos__19_1.6_splines_320_x0_None_x4_None_.pcl'
+# pfname5= 'swingup_splines__add_infos__29_2_splines_160_x0_None_x4_None_.pcl'
+# pfnames=[pfname1, pfname2, pfname3, pfname4, pfname5]
+# for pfname in pfnames :
+#     load_pytrajectory_results(cfg.pendata, pfname)
+
+# # tracking control of the time varying linear system
 # parallelized_tracking_control(cfg.pendata, pool_size=4)
 
 myplot(cfg.pendata)
