@@ -186,22 +186,28 @@ def trajectory_generator(ct, max_time, constraints=None):
     ]
     
     trajectories= zip(traj_labels,results)
+
+    number_of_splines_list= [trajectory[1]['x1'].n for trajectory in trajectories]
+    
+    dump_trajectory_results('swingup_splines', traj_labels, number_of_splines_list, con, trajectories)
+
     # solC = S.solve(return_format='info_container')
     # cont_dict = aux.containerize_splines(S.eqs.trajectories.splines)
-    pfname = 'swingup_splines_' + label + '.pcl'
-    with open(pfname, 'wb') as pfile:
-        dill.dump(trajectories, pfile)
-        print("Trajectories Written to {}".format(pfname))
+    # pfname = 'swingup_splines_' + label + '.pcl'
+    # with open(pfname, 'wb') as pfile:
+    #     dill.dump(trajectories, pfile)
+    #     print("Trajectories Written to {}".format(pfname))
 
     
-    ct.trajectory.seed_times= seed_times
-    ct.trajectory.pytrajectory_res= trajectories
-    ct.trajectory.xa= xa
-    ct.trajectory.xb= xb
-    ct.trajectory.a= a
-    ct.trajectory.b= b
-    ct.trajectory.ua= ua
-    ct.trajectory.ub= ub
+    
+    # ct.trajectory.seed_times= seed_times
+    # ct.trajectory.pytrajectory_res= trajectories
+    # ct.trajectory.xa= xa
+    # ct.trajectory.xb= xb
+    # ct.trajectory.a= a
+    # ct.trajectory.b= b
+    # ct.trajectory.ua= ua
+    # ct.trajectory.ub= ub
     
 
     ipydex.IPS()

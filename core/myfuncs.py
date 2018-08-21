@@ -1071,6 +1071,17 @@ def load_traj_splines(ct, pfname,traj_lable_list=None):
     (it saves time not to convert all the trajectory results !) 
      
     '''
+    current_path = os.getcwd()
+    current_dir = current_path.split('/')[-1]
+
+    if current_dir == 'core':
+        os.chdir('..')
+        os.chdir('traj_results')
+
+    elif current_dir == 'triple_pendulum':
+        os.chdir('traj_results')
+
+
     with open(pfname, 'rb') as pfile:
         trajectories = dill.load(pfile)
 
@@ -1096,6 +1107,7 @@ def load_traj_splines(ct, pfname,traj_lable_list=None):
 
     ct.trajectory.parallel_res = dict(parallel_res)
     print("Trajectories Written to ct.trajectory.parallel_res")
+    os.chdir(current_path)
 
     return
 
@@ -1106,11 +1118,26 @@ def load_pytrajectory_results(ct, pfname):
          arguments to be pickleable!)
          Instead you can use load_pytrajectory_results
     '''
+    current_path = os.getcwd()
+    current_dir = current_path.split('/')[-1]
+
+    if current_dir == 'core':
+        os.chdir('..')
+        os.chdir('traj_results')
+
+    elif current_dir == 'triple_pendulum':
+        os.chdir('traj_results')
+
     with open(pfname, 'rb') as pfile:
         pytrajectory_res = dill.load(pfile)
-
-    ct.trajectory.pytrajectory_res = dict(pytrajectory_res)
-    print("pytrajectory_results Written to ct.trajectory.pytrajectory_res")
+    
+    if not hasattr(ct.trajectory, 'pytrajectory_res'):
+        ct.trajectory.pytrajectory_res= {}
+        
+    
+    ct.trajectory.pytrajectory_res.update(dict(pytrajectory_res))
+    print("pytrajectory_results are loaded to ct.trajectory.pytrajectory_res")
+    os.chdir(current_path)
 
     return
 
@@ -1301,3 +1328,78 @@ def read_tracking_results_from_directories(directories):
     os.chdir(current_path)
 
     return tracking_res
+
+
+
+
+def generate_trajectory_name(types, traj_labels, number_of_splines_list,  constraints):
+    '''
+    type                      string:    'swingup_splines', ...
+    traj_lables               list  :     containing of 'seed_time'
+    number_of_splines_list:   list  :     number of splines for each trajectory according
+                                          to traj_labels
+    constraints               dict  :     constraints dict                  
+    '''
+    seed_time_label=""
+    for traj_label in traj_labels:
+        seed_time_label+= "_"+ traj_label
+    
+    spline_label= "_splines"
+    for num_of_splines in number_of_splines_list :
+        spline_label += '_' + str(num_of_splines)
+    
+    con_label="_"
+    for key, value in constraints.iteritems() :
+        con_label+= key + "_"+ str(value)+"_"
+
+    pfname= types + '_' + '_add_infos_' + seed_time_label+ spline_label + con_label+'.pcl'
+
+    return pfname
+
+
+def dump_trajectory_results(types, traj_labels, number_of_splines_list,  constraints, trajectories):
+
+    ''' generates a name for trajecotry and dump it to traj_results in triple_pendulum
+       
+    '''
+    current_path = os.getcwd()
+    current_dir = current_path.split('/')[-1]
+
+    if current_dir == 'core':
+        os.chdir('..')
+        createFolder('traj_results')
+        os.chdir('traj_results')
+
+    elif current_dir == 'triple_pendulum':
+        createFolder('traj_results')
+        os.chdir('traj_results')
+
+    pfname= generate_trajectory_name(types, traj_labels, number_of_splines_list, constraints)
+        
+    with open(pfname, 'wb') as pfile:
+        dill.dump(trajectories, pfile)
+
+
+    print("Trajectories are dumped to {}".format(os.path.join('traj_results',pfname)))
+    
+    os.chdir(current_path)
+        
+    return
+
+def split_trajectory_results(ct, pfname):
+    '''load results of pytrajectory and split them into 
+       seperate files 
+    '''
+    load_pytrajectory_results(ct, pfname)
+    traj_res= ct.trajectory.pytrajectory_res
+    types= 'swingup_splines'
+    
+    for key, value in traj_res.iteritems():
+        traj_labels=[key]
+        num_of_splines_list= [value[1]['x1'].n]
+        constraints={'x0':None, 'x4':None}
+        trajectory=[(key, value)]
+        dump_trajectory_results(types, traj_labels, num_of_splines_list, constraints, trajectory )
+    
+    return    
+    
