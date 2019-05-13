@@ -8,7 +8,6 @@ Kurosh Zamani
 TODO :
   
 
-
 '''
 #from __future__ import division, print_function
 #=============================================================
@@ -28,8 +27,8 @@ from scipy.optimize import minimize
 
 import cfg
 from sys_model import system_model_generator
-from functions import sympy_states_to_func
-from functions import jac_func
+from myfuncs import sympy_states_to_func
+from myfuncs import jac_func
 
 import ipydex
 
@@ -221,6 +220,8 @@ def trajectory_generator(ct, max_time):
     )
 
     q = ct.model.q
+    fx= ct.model.fx
+    gx= ct.model.gx
     ct.trajectory.n = n = 2 * len(q)
     ct.trajectory.k = k = 20
 
@@ -235,7 +236,7 @@ def trajectory_generator(ct, max_time):
     uf = [0.0]
 
     # fxu needet for constraint generator
-    fxu = sympy_states_to_func()
+    fxu = sympy_states_to_func(fx, gx)
     ct.trajectory.fxu = fxu
 
     # defining constraints
@@ -282,14 +283,14 @@ def trajectory_generator(ct, max_time):
     #     boundry_xf_tupel+= (boundry_xf_dict, )
 
     # all constrainsts together
-    cons = (collocation_cons, interpolation_cons, boundry_x0, boundry_xf, error_cons)
+    cons = (collocation_cons, interpolation_cons, boundry_x0, boundry_xf)
     #cons = (collocation_cons, interpolation_cons,boundry_x0, boundry_xf)
 
     # cons= (collocation_cons,interpolation_cons) + boundry_x0_tupel + boundry_xf_tupel
 
-    bnds = [(None, None)
-            for i in range((2 * k - 1) * n)] + [(-20, 20)
-                                                for i in range(2 * k - 1)]
+    # bnds = [(None, None)
+    #         for i in range((2 * k - 1) * n)] + [(-20, 20)
+    #                                             for i in range(2 * k - 1)]
 
     # initial guess !
     z0 = np.array(x0 + [0.1 for i in range((2 * k - 1) * n - 2 * n)] + xf +

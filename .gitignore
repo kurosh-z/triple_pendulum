@@ -1,13 +1,3 @@
-\.vscode\
-\.ipynb_checkpoints\
-\examples\.ipynb_checkpoints\
-\examples\.vscode\
-\examples\__pycache__\
-\debug\.ipynb_checkpoints
-\optimization\.vscode\
-
-
-
 # Compiled source #
 ###################
 *.com
@@ -46,4 +36,4 @@
 ehthumbs.db
 Thumbs.db
 
-
+*.vscode

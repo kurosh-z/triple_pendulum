@@ -1,2 +1,0 @@
-tmax=2
-pytrajectory's "eps": 0.08

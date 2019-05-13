@@ -53,29 +53,67 @@ def Pen_Container_initializer(number_of_pendulums):
         0.32,  # l[0] : l1
         0.419,  # l[1] : l2
         0.485,  # l[2] : l3
-        0.2,  # a[0] : a1
-        0.26,  # a[1] : a2
-        0.216,  # a[2] : a3
+        0.20001517,  # a[0] : a1
+        0.26890449,  # a[1] : a2
+        0.21666087,  # a[2] : a3
         3.34,  # m[0] : m0
         0.8512,  # m[1] : m1
         0.8973,  # m[2] : m2
         0.5519,  # m[3] : m3
         0.0,  # J[0] : J0
-        0.01980,  # J[1] : J1
-        0.02105,  # J[2] : J2
-        0.01818,  # J[3] : J3
-        0.01980,  # d[0] : d1
-        1.9e-6,  # d[1] : d2
-        0.00164,  # d[2] : d3
+        0.01980194,  # J[1] : J1
+        0.02105375,  # J[2] : J2
+        0.01818537,  # J[3] : J3
+        0.00715294,  # d[0] : d1
+        1.9497e-06,  # d[1] : d2
+        0.00164642,  # d[2] : d3
         9.81,  # g    : g
         0.0  # f    : f 
     ]
+    tol_dicts = [{
+        'l1': 0.1
+    }, {
+        'l2': 0.1
+    }, {
+        'l3': 0.1
+    }, {
+        'a1': 0.1
+    }, {
+        'a2': 0.1
+    }, {
+        'a3': 0.1
+    }, {
+        'm0': 0.1
+    }, {
+        'm1': 0.1
+    }, {
+        'm2': 0.1
+    }, {
+        'm3': 0.1
+    }, {
+        'J0': 0.1
+    }, {
+        'J1': 0.1
+    }, {
+        'J2': 0.1
+    }, {
+        'J3': 0.1
+    }, {
+        'd1': 0.1
+    }, {
+        'd2': 0.1
+    }, {
+        'd3': 0.1
+    }, {
+        'g': 0.1
+    }]
 
     parameter_values_dict = {
         'simple': parameter_values_simple_pendulum,
         'double': parameter_values_double_pendulum,
         'triple': parameter_values_triple_pendulum
     }
+    parameter_tol_dicts={'triple': tol_dicts}
     
     if number_of_pendulums == 1 :
         label= 'simple'
@@ -88,18 +126,18 @@ def Pen_Container_initializer(number_of_pendulums):
 
     pendata = Pen_Container('Inverted' + '_' + label +'_' +'Pendulum')
     pendata.parameter_values= parameter_values_dict[label]
+    pendata.parameter_tol_dicts= parameter_tol_dicts[label]
     pendata.model = Pen_Container('model')
 
     # trajectory :
-    pendata.trajectory= Pen_Container('Trajecory')
-    pendata.trajectory.k= None
+    pendata.trajectory= Pen_Container('Trajectory')
+    # pendata.trajectory.k= None
     # pendata.trajectory.n=[]
     # pendata.trajectory.max_time
     # pendata.trajectory.fxu=lambda x, u: print('you have to define fxu !')
     
     # tracking
     pendata.tracking= Pen_Container('tracking')
-    pendata.tracking.ucl=[]
     pendata.number_of_pendulums= number_of_pendulums
     
     print('somebody called me !')

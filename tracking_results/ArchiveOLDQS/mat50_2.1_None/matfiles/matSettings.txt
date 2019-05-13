@@ -1,0 +1,25 @@
+problem.func.dynamics = @(t,x,u)( tripelInvPenDynamics(x,u) );
+problem.func.pathObj = @(t,x,u)( pathObjective(u) ); % min u
+% problem.func.pathObj = @(t,x,u)( pathObjectivex(x) ); % min q0
+% problem.func.pathObj = @(t,x,u)(ones(size(t))+1e-6*u.^2);  % min time!
+
+% Problem bounds
+problem.bounds.initialTime.low = 0;
+problem.bounds.initialTime.upp = 0;
+% problem.bounds.finalTime.low = duration-0.6;
+% problem.bounds.finalTime.upp = duration+0.3;
+
+problem.bounds.finalTime.low =duration-.1;
+problem.bounds.finalTime.upp =duration+.1;
+
+eps=1e-4;
+problem.bounds.initialState.low = [0-eps; pi-eps; pi-eps; pi-eps; 0-eps; 0-eps ; 0-eps; 0-eps];
+problem.bounds.initialState.upp = [0+eps; pi+eps; pi+eps; pi+eps; 0+eps; 0+eps ; 0+eps; 0+eps];
+
+% problem.bounds.finalState.low = [0-eps; 0-eps; 0-eps; 0-eps; 0-eps; 0-eps ; 0-eps; 0-eps];
+% problem.bounds.finalState.upp = [0+eps; 0+eps; 0+eps; 0+eps; 0+eps; 0+eps ; 0+eps; 0+eps];
+problem.bounds.finalState.low = [0-5e-5; 0-7e-04; 0-7e-04; 0-7e-04; 0-2e-05; 0-2e-03; 0-2e-03; 0-2e-03 ];
+problem.bounds.finalState.upp = [0+5e-5; 0+7e-04; 0+7e-04; 0+7e-04; 0+2e-05; 0+2e-03; 0+2e-03; 0+2e-03 ];
+
+problem.bounds.state.low = [-2*maxDist; -2*pi;-2*pi;-2*pi;-4.5; -inf;-inf; -inf];
+problem.bounds.state.upp = [ 2*maxDist;  2*pi; 2*pi; 2*pi; 4.5; inf; inf;  inf];
